@@ -21,7 +21,7 @@ codes the scripts in this repository use.
 | | 2 | usage error / missing context directory / an `AGENT_ARCHIVE_DIRS` entry outside the skill tree |
 | `index-audit.py` | 0 | clean |
 | | 1 | at least one owned dimension has an entry |
-| | 2 | usage error / missing skill tree |
+| | 2 | usage error / missing skill tree / an `AGENT_ARCHIVE_DIRS` entry outside the skill tree |
 
 ## Why "owned dimensions" matters
 

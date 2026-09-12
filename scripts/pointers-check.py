@@ -18,7 +18,8 @@ Dimensions (all owned — an entry in any of them sets exit code 1):
                           recoverable rather than lost. A pointer is never allowed to fail silently just
                           because something was filed away.
 
-Exit codes: 0 = clean, 1 = entries, 2 = usage error (missing directory).
+Exit codes: 0 = clean, 1 = entries, 2 = usage error (missing directory) or an invalid
+`AGENT_ARCHIVE_DIRS` entry.
 """
 
 from __future__ import annotations
@@ -174,6 +175,9 @@ def scan_orphan_indexes(root: Path) -> List[str]:
     if not root.is_dir():
         return entries
     for index in sorted(root.rglob("references/INDEX.md")):
+        relative = index.relative_to(root)
+        if non_live(relative.parts[:-1]):
+            continue  # an index inside an archive or a hidden directory is not live content
         skill_md = index.parent.parent / "SKILL.md"
         if not skill_md.is_file():
             entries.append(f"[3] {index} — no SKILL.md beside it")

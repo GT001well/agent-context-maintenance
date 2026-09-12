@@ -78,24 +78,32 @@ def archive_names() -> List[str]:
     return [item.strip() for item in raw.split(":") if item.strip()]
 
 
+def archive_name_parts() -> List[tuple]:
+    """Archive names as path-component tuples, so `old/2026` behaves like any single name."""
+    return [tuple(part for part in name.split("/") if part not in ("", ".")) for name in archive_names()]
+
+
 def archive_dirs() -> List[Path]:
     return [skills_root() / name for name in archive_names()]
 
 
 def non_live(parts: object) -> bool:
-    """True when any directory component is hidden or belongs to a configured archive.
+    """True when any directory component is hidden or starts a configured archive path.
 
     Callers pass the *directory* components only: a file's path minus its file name, or a directory's
     full relative path. Dropping the last component unconditionally was a bug — a hidden directory passed
     as the path itself was then judged live, and the orphan-content check reported `.tmp/` as
     unloadable content.
 
-    Stated as "hidden **or configured archive**" rather than "hidden" alone: archive names are
-    configurable and need not start with a dot, so a rule based on the dot prefix would quietly treat
-    `archived/` as live content. Both checkers ask this one function.
+    Archive names may be multi-component (`old/2026`), so they are matched as prefixes of the directory
+    components rather than as single names: a name that never matched would make the index audit treat an
+    archive as live while the pointer check considered it archived — the two disagreeing is exactly what
+    this shared helper exists to prevent.
     """
-    names = set(archive_names())
-    return any(part.startswith(".") or part in names for part in parts)  # type: ignore[union-attr]
+    dirs = tuple(parts)  # type: ignore[arg-type]
+    if any(part.startswith(".") for part in dirs):
+        return True
+    return any(dirs[:len(name)] == name for name in archive_name_parts() if name)
 
 
 def archive_config_error() -> str:

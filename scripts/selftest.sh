@@ -138,6 +138,8 @@ python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1
 check "restored skill resolves again" 0 $?
 (AGENT_ARCHIVE_DIRS="../outside" python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1)
 check "an archive dir outside the tree is a config error" 2 $?
+(AGENT_ARCHIVE_DIRS="../outside" python3 "$SCRIPTS/index-audit.py" >/dev/null 2>&1)
+check "the index audit refuses it too" 2 $?
 
 echo "[4c] loadable-content check"
 mkdir -p "$AGENT_SKILLS_ROOT/leftover"
@@ -164,6 +166,16 @@ assert "the report calls it recoverable" $?
 check "the same archive is skipped by the index audit" 0 $?
 mv "$AGENT_SKILLS_ROOT/archived/another-skill" "$AGENT_SKILLS_ROOT/another-skill"
 rmdir "$AGENT_SKILLS_ROOT/archived"
+
+echo "[4e] a multi-component archive name works too"
+mkdir -p "$AGENT_SKILLS_ROOT/old/2026"
+mv "$AGENT_SKILLS_ROOT/another-skill" "$AGENT_SKILLS_ROOT/old/2026/another-skill"
+(AGENT_ARCHIVE_DIRS="old/2026" python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1)
+check "nested archive name: pointer reported as recoverable" 1 $?
+(AGENT_ARCHIVE_DIRS="old/2026" python3 "$SCRIPTS/index-audit.py" >/dev/null 2>&1)
+check "nested archive name: skipped by the index audit" 0 $?
+mv "$AGENT_SKILLS_ROOT/old/2026/another-skill" "$AGENT_SKILLS_ROOT/another-skill"
+rm -rf "$AGENT_SKILLS_ROOT/old"
 
 echo "[5] snapshot-context.sh"
 "$SCRIPTS/snapshot-context.sh" >/dev/null 2>&1
