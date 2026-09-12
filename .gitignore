@@ -1,0 +1,9 @@
+# Local configuration (never committed — see config.example.env)
+config.env
+
+# Backups, snapshots and archives
+.backups/
+
+# Python
+__pycache__/
+*.pyc
