@@ -13,6 +13,10 @@ Dimensions (all owned — an entry in any of them sets exit code 1):
                           edges are what keeps the non-injected layer (POINTERS.md) findable; trimming
                           text for size is how they disappear silently.
   [3] Orphan index      — a `references/INDEX.md` that its own SKILL.md never points at.
+  [4] Archived target   — a pointer that no longer resolves from the live tree but *does* resolve inside
+                          an archive directory (AGENT_ARCHIVE_DIRS, default `.archive`): reported as
+                          recoverable rather than lost. A pointer is never allowed to fail silently just
+                          because something was filed away.
 
 Exit codes: 0 = clean, 1 = entries, 2 = usage error (missing directory).
 """
@@ -26,22 +30,25 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _config import REPO_ROOT, agent_home, context_files, mutual_files, skills_root  # noqa: E402
+from _config import REPO_ROOT, agent_home, archive_dirs, archive_names, context_files, mutual_files, skills_root  # noqa: E402
 
 SKILL_REF = re.compile(r"skill:([A-Za-z0-9_.-]+)")
 CODE_SPAN = re.compile(r"`([^`\n]+)`")
 PATH_LIKE = re.compile(r"^[\w./-]+\.(md|py|sh|json|env|toml|yaml)$")
 SKIP_MARKERS = ("<", ">", "*", "…", "...", "$")
 _REPO_FILES: List[str] | None = None
+_ARCHIVE_INDEX: Tuple[Dict[str, Path], List[str]] | None = None
 
 
 def skill_dirs(root: Path) -> Dict[str, Path]:
-    """{skill name: directory} for every SKILL.md under root, keyed by directory name."""
+    """{skill name: directory} for every *live* SKILL.md under root, keyed by directory name."""
     found: Dict[str, Path] = {}
     if not root.is_dir():
         return found
+    archived = set(archive_names())
     for skill_md in sorted(root.rglob("SKILL.md")):
-        if len(skill_md.relative_to(root).parts) > 4:
+        relative = skill_md.relative_to(root)
+        if len(relative.parts) > 4 or any(part in archived for part in relative.parts[:-1]):
             continue
         found.setdefault(skill_md.parent.name, skill_md.parent)
     return found
@@ -74,18 +81,49 @@ def resolves(candidate: str, source: Path, home: Path) -> bool:
     return any(rel == candidate or rel.endswith("/" + candidate) for rel in repo_files())
 
 
+def archive_index() -> Tuple[Dict[str, Path], List[str]]:
+    """(name -> archived skill dir, archived file paths) for the pointer recovery pass."""
+    global _ARCHIVE_INDEX
+    if _ARCHIVE_INDEX is None:
+        skills: Dict[str, Path] = {}
+        files: List[str] = []
+        root = skills_root()
+        for directory in archive_dirs():
+            if not directory.is_dir():
+                continue
+            for skill_md in sorted(directory.rglob("SKILL.md")):
+                skills.setdefault(skill_md.parent.name, skill_md.parent)
+            for path in sorted(directory.rglob("*")):
+                if path.is_file():
+                    files.append(str(path.relative_to(root)))
+        _ARCHIVE_INDEX = (skills, files)
+    return _ARCHIVE_INDEX
+
+
 def scan_links(paths: List[Path], skills: Dict[str, Path]) -> List[str]:
     entries: List[str] = []
+    archived_skills, archived_files = archive_index()
     for path in paths:
         if not path.is_file():
             continue
         for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
             for name in SKILL_REF.findall(line):
-                if name not in skills:
-                    entries.append(f"[1] {path}:{number}  skill:{name} — no such skill under {skills_root()}")
+                if name in skills:
+                    continue
+                if name in archived_skills:
+                    entries.append(f"[4] {path}:{number}  skill:{name} — archived at "
+                                   f"{archived_skills[name]}; restore it or re-point (recoverable)")
+                    continue
+                entries.append(f"[1] {path}:{number}  skill:{name} — no such skill under {skills_root()}")
             for span in CODE_SPAN.findall(line):
-                if PATH_LIKE.match(span.strip()) and not resolves(span.strip(), path, agent_home()):
-                    entries.append(f"[1] {path}:{number}  `{span.strip()}` does not resolve")
+                candidate = span.strip()
+                if not PATH_LIKE.match(candidate) or resolves(candidate, path, agent_home()):
+                    continue
+                if any(rel == candidate or rel.endswith("/" + candidate) for rel in archived_files):
+                    entries.append(f"[4] {path}:{number}  `{candidate}` — only present in an archive "
+                                   f"directory (recoverable, not lost)")
+                    continue
+                entries.append(f"[1] {path}:{number}  `{candidate}` does not resolve")
     return entries
 
 
@@ -140,11 +178,15 @@ def main(argv: List[str]) -> int:
 
     files = context_files()
     skills = skill_dirs(root)
-    skill_md_files = [path for path in sorted(root.rglob("SKILL.md")) if len(path.relative_to(root).parts) <= 4] \
-        if root.is_dir() else []
+    archived_names = set(archive_names())
+    live_skill_md = [
+        path for path in sorted(root.rglob("SKILL.md"))
+        if len(path.relative_to(root).parts) <= 4
+        and not any(part in archived_names for part in path.relative_to(root).parts)
+    ] if root.is_dir() else []
 
     entries = (
-        scan_links(files + skill_md_files, skills)
+        scan_links(files + live_skill_md, skills)
         + scan_mutual_edges(mutual_files())
         + scan_orphan_indexes(root)
     )
@@ -157,7 +199,7 @@ def main(argv: List[str]) -> int:
         print(f"[i] context files not present (skipped): {', '.join(missing)}")
     total = len(entries)
     if total:
-        print(f"[!] {total} pointer problem(s) — unresolved pointers fail silently at use time")
+        print(f"[!] {total} pointer problem(s) — [1] broken, [4] recoverable (archived)")
         return 1
     print(f"[v] pointers ok ({len(files)} context file(s), {len(skills)} skill(s))")
     return 0

@@ -37,6 +37,7 @@
 ├── docs/
 │   ├── design.md                为什么分四层，每层该放什么
 │   ├── maintenance-workflow.md  改动循环，以及让循环有效的规则
+│   ├── check-dimensions.md      检查编号与指针自修复机制
 │   └── pitfalls.md              这套体系会腐烂的十种方式（附修法）
 ├── example-agent/               示例 agent home，脚本可直接作用于它
 │   ├── IDENTITY.md  USER.md  MEMORY.md  POINTERS.md

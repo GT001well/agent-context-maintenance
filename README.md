@@ -38,6 +38,7 @@ a skill tree with an index convention, and six scripts that make edits and links
 ├── docs/
 │   ├── design.md                why four layers, what belongs in each
 │   ├── maintenance-workflow.md  the edit loop and the rules that make it work
+│   ├── check-dimensions.md      how findings are numbered, and how pointers self-repair
 │   └── pitfalls.md              ten ways this system rots (and the fix)
 ├── example-agent/               a demo agent home the scripts can act on
 │   ├── IDENTITY.md  USER.md  MEMORY.md  POINTERS.md
@@ -112,8 +113,12 @@ Full rules, including the ones that are counter-intuitive, are in `docs/maintena
 4. **Nothing important lives only in `MEMORY.md`.** Memory gets compacted; procedures belong in skills.
 5. **One rule, one home.** The same judgement written in two scripts drifts; the second copy imports the first.
 6. **Scripts only add, never overwrite.** Same-second reruns must not eat the previous backup.
-7. **A checker needs its own exit code** — but only for the dimensions it owns, or the code becomes noise.
-8. **Self-test in both directions.** "Reworded text passes" and "deleted text is flagged" are two different tests.
+7. **Number your findings and freeze the IDs.** `[C]` means the same check forever; renumbering is a
+   measured cost, not tidying. Owned dimensions set the exit code, informational ones never do.
+8. **Pointers get three outcomes, not two** — resolves / recoverable (archived) / broken. Collapsing
+   "filed away" into "lost" throws away the part that makes a report actionable.
+9. **A checker needs its own exit code** — but only for the dimensions it owns, or the code becomes noise.
+10. **Self-test in both directions.** "Reworded text passes" and "deleted text is flagged" are two different tests.
 
 ## Scope
 

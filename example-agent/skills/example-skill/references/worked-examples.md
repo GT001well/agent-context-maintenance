@@ -61,3 +61,32 @@ Output:
 Exit code `0`. The tokens now exist in the pool, so the deletion is read as a move. This is why the
 flag exists: without it, every reorganization of content produces a wall of false alarms, and a check
 that cries wolf on every reorganisation gets ignored exactly when it matters.
+
+## Example 3 — a pointer whose target was archived (recoverable, not lost)
+
+Move `skills/another-skill/` into `skills/.archive/` (the default archive directory) and run the
+pointer check:
+
+```bash
+mkdir -p "$AGENT_SKILLS_ROOT/.archive"
+mv "$AGENT_SKILLS_ROOT/another-skill" "$AGENT_SKILLS_ROOT/.archive/another-skill"
+python3 scripts/pointers-check.py
+```
+
+Output:
+
+```
+[4] .../POINTERS.md:22  skill:another-skill — archived at .../skills/.archive/another-skill; restore it or re-point (recoverable)
+[!] 1 pointer problem(s) — [1] broken, [4] recoverable (archived)
+```
+
+Exit code `1`, but the message says *recoverable*: the fix is "restore it or re-point the pointer",
+not "the content is gone". Separately, the index audit stays clean while the skill is archived:
+
+```
+[v] skill tree ok (1 skill(s), 0 informational note(s))
+```
+
+Archived directories are not live skills, so they are not audited as if they were. Without that
+distinction, filing something away would produce the same alarm as deleting it — and the response to a
+noisy check is to stop running it.

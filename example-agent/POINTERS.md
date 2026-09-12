@@ -15,6 +15,7 @@ short "related" lines (`IDENTITY.md`, `USER.md`, `MEMORY.md`) so that each file 
 |---|---|---|
 | Maintenance loop and rules | `docs/maintenance-workflow.md` | the five steps, and why each exists |
 | Context layer design | `docs/design.md` | what belongs in which layer, A/B/C grading |
+| Check dimensions and pointer repair | `docs/check-dimensions.md` | why findings are numbered, and the three pointer outcomes |
 | Known failure modes | `docs/pitfalls.md` | read before changing anything structural |
 | Backups, snapshots and archives | `/home/sam/agent-backups` | outside the agent home on purpose |
 | Skill: backup and compare helpers | skill:example-skill | walkthrough with worked examples |

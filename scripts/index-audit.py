@@ -13,6 +13,9 @@ Owned dimensions (an entry in any of them sets exit code 1):
   [D] a file in `references/` that the index table never mentions (coverage gap).
   [E] the same skill directory name appearing twice under the tree (ambiguous lookup).
   [F] a SKILL.md with an odd number of ``` fences — the body renders and scans as truncated text.
+  [G] a directory holding files but no SKILL.md at or below it — content that cannot be loaded as a
+      skill. Anything filed under an archive directory (AGENT_ARCHIVE_DIRS, default `.archive`) is not
+      a live skill and is skipped rather than reported.
 
 Information only (printed, never affects the exit code): a SKILL.md larger than 40 KB, which is worth
 splitting, but is a sizing opinion rather than a defect.
@@ -29,7 +32,7 @@ from pathlib import Path
 from typing import Dict, List
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _config import skills_root  # noqa: E402
+from _config import archive_names, skills_root  # noqa: E402
 
 NAME_FIELD = re.compile(r"^name:\s*(.+?)\s*$", re.MULTILINE)
 INDEX_ROW = re.compile(r"`?([\w./-]+\.md)`?")
@@ -37,10 +40,41 @@ BIG_SKILL = 40 * 1024
 MAX_DEPTH = 4
 
 
+def is_archived(path: Path, root: Path) -> bool:
+    """True for anything filed under an archive directory: archived skills are not live skills."""
+    names = set(archive_names())
+    return any(part in names or (part.startswith(".") and part != ".") for part in
+               path.relative_to(root).parts[:-1])
+
+
 def skill_files(root: Path) -> List[Path]:
     if not root.is_dir():
         return []
-    return [p for p in sorted(root.rglob("SKILL.md")) if len(p.relative_to(root).parts) <= MAX_DEPTH]
+    return [p for p in sorted(root.rglob("SKILL.md"))
+            if len(p.relative_to(root).parts) <= MAX_DEPTH and not is_archived(p, root)]
+
+
+def orphan_content(root: Path) -> List[str]:
+    """[G] directories holding files but no SKILL.md anywhere beneath them: nothing can load them."""
+    entries: List[str] = []
+    if not root.is_dir():
+        return entries
+    skill_dirs = {p.parent.resolve() for p in skill_files(root)}
+    for directory in sorted(p for p in root.rglob("*") if p.is_dir()):
+        relative = directory.relative_to(root)
+        if len(relative.parts) > MAX_DEPTH or is_archived(directory, root):
+            continue
+        if directory.name.startswith("."):
+            continue
+        # Directories that belong to a skill (below its SKILL.md) are content, not skills.
+        resolved = directory.resolve()
+        if any(resolved == skill or skill in resolved.parents for skill in skill_dirs):
+            continue
+        files = [p for p in directory.rglob("*") if p.is_file() and not p.name.startswith(".")]
+        if files and not any(p.name == "SKILL.md" for p in files):
+            entries.append(f"[G] {directory.relative_to(root)} — {len(files)} file(s) but no SKILL.md "
+                           f"at or below this directory (unloadable content)")
+    return entries
 
 
 def index_entries(index: Path) -> List[str]:
@@ -98,6 +132,7 @@ def audit(root: Path) -> Dict[str, List[str]]:
         for path in files:
             if path.name not in listed:
                 owned.append(f"[D] {index} — {path.relative_to(refs_dir)} exists but is not listed")
+    owned.extend(orphan_content(root))
     return {"owned": owned, "info": info}
 
 

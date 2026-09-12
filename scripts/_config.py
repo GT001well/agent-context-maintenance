@@ -69,6 +69,19 @@ def mutual_files() -> List[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def archive_names() -> List[str]:
+    """Archive directory names inside the skill tree (AGENT_ARCHIVE_DIRS, colon-separated).
+
+    One home for this rule: both checkers ask here, so "what counts as archived" cannot drift.
+    """
+    raw = os.environ.get("AGENT_ARCHIVE_DIRS", ".archive")
+    return [item.strip() for item in raw.split(":") if item.strip()]
+
+
+def archive_dirs() -> List[Path]:
+    return [skills_root() / name for name in archive_names()]
+
+
 def keep(name: str, default: int) -> int:
     raw = os.environ.get(name, "").strip()
     if not raw:

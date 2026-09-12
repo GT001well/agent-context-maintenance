@@ -105,6 +105,29 @@ PY
 python3 "$SCRIPTS/index-audit.py" >/dev/null 2>&1
 check "restored index is clean again" 0 $?
 
+echo "[4b] archive-aware pointer recovery"
+mkdir -p "$AGENT_SKILLS_ROOT/.archive"
+mv "$AGENT_SKILLS_ROOT/another-skill" "$AGENT_SKILLS_ROOT/.archive/another-skill"
+python3 "$SCRIPTS/pointers-check.py" >"$WORK/archive-report" 2>&1
+check "a pointer into the archive is reported" 1 $?
+grep -q 'archived' "$WORK/archive-report"
+assert "the report says it is recoverable, not lost" $?
+python3 "$SCRIPTS/index-audit.py" >/dev/null 2>&1
+check "archived skills are skipped by the index audit" 0 $?
+mv "$AGENT_SKILLS_ROOT/.archive/another-skill" "$AGENT_SKILLS_ROOT/another-skill"
+rmdir "$AGENT_SKILLS_ROOT/.archive"
+python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1
+check "restored skill resolves again" 0 $?
+
+echo "[4c] loadable-content check"
+mkdir -p "$AGENT_SKILLS_ROOT/leftover"
+echo "stray content" > "$AGENT_SKILLS_ROOT/leftover/note.md"
+python3 "$SCRIPTS/index-audit.py" >/dev/null 2>&1
+check "content with no SKILL.md is caught" 1 $?
+rm -rf "$AGENT_SKILLS_ROOT/leftover"
+python3 "$SCRIPTS/index-audit.py" >/dev/null 2>&1
+check "removed again" 0 $?
+
 echo "[5] snapshot-context.sh"
 "$SCRIPTS/snapshot-context.sh" >/dev/null 2>&1
 check "snapshot writes without pruning" 0 $?
