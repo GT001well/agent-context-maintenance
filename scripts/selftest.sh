@@ -147,6 +147,23 @@ check "content with no SKILL.md is caught" 1 $?
 rm -rf "$AGENT_SKILLS_ROOT/leftover"
 python3 "$SCRIPTS/index-audit.py" >/dev/null 2>&1
 check "removed again" 0 $?
+mkdir -p "$AGENT_SKILLS_ROOT/.tmp"
+echo "stray content" > "$AGENT_SKILLS_ROOT/.tmp/note.md"
+python3 "$SCRIPTS/index-audit.py" >/dev/null 2>&1
+check "a hidden directory is not audited as content" 0 $?
+rm -rf "$AGENT_SKILLS_ROOT/.tmp"
+
+echo "[4d] a non-dot archive name works the same way"
+mkdir -p "$AGENT_SKILLS_ROOT/archived"
+mv "$AGENT_SKILLS_ROOT/another-skill" "$AGENT_SKILLS_ROOT/archived/another-skill"
+(AGENT_ARCHIVE_DIRS="archived" python3 "$SCRIPTS/pointers-check.py" >"$WORK/archived-report" 2>&1)
+check "configured archive name is honoured (pointer reported)" 1 $?
+grep -q 'archived' "$WORK/archived-report"
+assert "the report calls it recoverable" $?
+(AGENT_ARCHIVE_DIRS="archived" python3 "$SCRIPTS/index-audit.py" >/dev/null 2>&1)
+check "the same archive is skipped by the index audit" 0 $?
+mv "$AGENT_SKILLS_ROOT/archived/another-skill" "$AGENT_SKILLS_ROOT/another-skill"
+rmdir "$AGENT_SKILLS_ROOT/archived"
 
 echo "[5] snapshot-context.sh"
 "$SCRIPTS/snapshot-context.sh" >/dev/null 2>&1

@@ -14,8 +14,9 @@ Owned dimensions (an entry in any of them sets exit code 1):
   [E] the same skill directory name appearing twice under the tree (ambiguous lookup).
   [F] a SKILL.md with an odd number of ``` fences — the body renders and scans as truncated text.
   [G] a directory holding files but no SKILL.md at or below it — content that cannot be loaded as a
-      skill. Anything inside a hidden directory (`.archive`, `.tmp`, …) is not a live skill and is
-      skipped by both checkers, through one shared `audited()` helper.
+      skill. A directory is non-live, and therefore skipped, when any of its path components is hidden
+      (`.archive`, `.tmp`, …) or is a configured archive name — one shared `non_live()` helper decides
+      this for both checkers.
 
 Information only (printed, never affects the exit code): a SKILL.md larger than 40 KB, which is worth
 splitting, but is a sizing opinion rather than a defect.
@@ -32,7 +33,7 @@ from pathlib import Path
 from typing import Dict, List
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _config import audited, skills_root  # noqa: E402
+from _config import archive_config_error, non_live, skills_root  # noqa: E402
 
 NAME_FIELD = re.compile(r"^name:\s*(.+?)\s*$", re.MULTILINE)
 INDEX_ROW = re.compile(r"`?([\w./-]+\.md)`?")
@@ -44,7 +45,8 @@ def skill_files(root: Path) -> List[Path]:
     if not root.is_dir():
         return []
     return [p for p in sorted(root.rglob("SKILL.md"))
-            if len(p.relative_to(root).parts) <= MAX_DEPTH and audited(p.relative_to(root))]
+            if len(p.relative_to(root).parts) <= MAX_DEPTH
+            and not non_live(p.relative_to(root).parts[:-1])]
 
 
 def orphan_content(root: Path) -> List[str]:
@@ -55,7 +57,7 @@ def orphan_content(root: Path) -> List[str]:
     skill_dirs = {p.parent.resolve() for p in skill_files(root)}
     for directory in sorted(p for p in root.rglob("*") if p.is_dir()):
         relative = directory.relative_to(root)
-        if len(relative.parts) > MAX_DEPTH or not audited(relative):
+        if len(relative.parts) > MAX_DEPTH or non_live(relative.parts):
             continue
         # Directories that belong to a skill (below its SKILL.md) are content, not skills.
         resolved = directory.resolve()
@@ -136,6 +138,9 @@ def main(argv: List[str]) -> int:
     root = Path(args.skills_root).expanduser() if args.skills_root else skills_root()
     if not root.is_dir():
         print(f"[x] skill tree not found: {root} (set AGENT_SKILLS_ROOT)", file=sys.stderr)
+        return 2
+    if config_error := archive_config_error():
+        print(f"[x] invalid configuration: {config_error}", file=sys.stderr)
         return 2
 
     result = audit(root)

@@ -30,7 +30,16 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _config import REPO_ROOT, agent_home, archive_dirs, audited, context_files, mutual_files, skills_root  # noqa: E402
+from _config import (  # noqa: E402
+    REPO_ROOT,
+    agent_home,
+    archive_config_error,
+    archive_dirs,
+    context_files,
+    mutual_files,
+    non_live,
+    skills_root,
+)
 
 SKILL_REF = re.compile(r"skill:([A-Za-z0-9_.-]+)")
 CODE_SPAN = re.compile(r"`([^`\n]+)`")
@@ -47,7 +56,7 @@ def skill_dirs(root: Path) -> Dict[str, Path]:
         return found
     for skill_md in sorted(root.rglob("SKILL.md")):
         relative = skill_md.relative_to(root)
-        if len(relative.parts) > 4 or not audited(relative):
+        if len(relative.parts) > 4 or non_live(relative.parts[:-1]):
             continue
         found.setdefault(skill_md.parent.name, skill_md.parent)
     return found
@@ -201,7 +210,7 @@ def main(argv: List[str]) -> int:
     skills = skill_dirs(root)
     live_skill_md = [
         path for path in sorted(root.rglob("SKILL.md"))
-        if len(path.relative_to(root).parts) <= 4 and audited(path.relative_to(root))
+        if len(path.relative_to(root).parts) <= 4 and not non_live(path.relative_to(root).parts[:-1])
     ] if root.is_dir() else []
 
     entries = (

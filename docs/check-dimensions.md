@@ -80,10 +80,14 @@ and a system where archiving produces the same alarm as deletion is a system whe
 avoided.
 
 What counts as an archive is exactly the directories named in `AGENT_ARCHIVE_DIRS` (default `.archive`);
-a configured entry that resolves outside the skill tree is refused as a configuration error (exit 2)
-rather than skipped. Separately, **any** hidden directory (a dot-prefixed path component) is treated as
-non-live by both checkers through one shared helper — hidden content is neither audited as a skill nor
-reported as archived, so the two checkers cannot disagree about it.
+the names are free-form, they need not start with a dot. A configured entry that resolves outside the
+skill tree is refused as a configuration error (exit 2) by both checkers, rather than skipped.
+
+Independently, a directory whose path contains a hidden component (or a configured archive name) is
+**non-live**: neither checker audits it as a skill, so the two can never disagree about it, and a
+configured archive additionally gets the recoverable-outcome treatment above. A hidden directory that is
+*not* configured as an archive is simply not audited — it is not reported as archived either, because
+"archived" is a claim about where something went, and nothing recorded that.
 
 ### 3. Allow-list before accusation
 
@@ -96,11 +100,10 @@ real data.**
 ### 4. Documentation is data
 
 The scanner reads the context files and live `SKILL.md` files, so an example written casually in one of
-those becomes a finding: a backticked path that does not exist, or a path mentioned in order to *deny*
-that it exists. Write examples in a form the checker is told to skip (`2026/03/<file>.md`) — or, if the
-text is right and the check is wrong, widen the check. Decide which of the two is at fault; do not
-disable the check. This bit twice while building this repository; both cases are written up in
-`docs/pitfalls.md`.
+those becomes a finding: a backticked path that resolves nowhere, or prose that merely *mentions* a file
+and is read as a reference. Two repairs, decided case by case — rewrite the example into a form the
+checker skips (`2026/03/<file>.md`), or widen the check when the text is right and the check is wrong.
+What you never do is disable the check; the details of both cases are in `docs/pitfalls.md`.
 
 ### 5. Cross-references between injected files
 

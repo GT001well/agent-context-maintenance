@@ -82,14 +82,35 @@ def archive_dirs() -> List[Path]:
     return [skills_root() / name for name in archive_names()]
 
 
-def audited(relative: Path) -> bool:
-    """False for anything inside a hidden directory: hidden paths are not live content.
+def non_live(parts: object) -> bool:
+    """True when any directory component is hidden or belongs to a configured archive.
 
-    Stated as "hidden" rather than "archived" on purpose. Configured archives (`.archive` by default)
-    are the common case, but both checkers must treat every hidden directory the same way, or a hidden
-    directory gets audited as a live skill by one of them and ignored by the other.
+    Callers pass the *directory* components only: a file's path minus its file name, or a directory's
+    full relative path. Dropping the last component unconditionally was a bug — a hidden directory passed
+    as the path itself was then judged live, and the orphan-content check reported `.tmp/` as
+    unloadable content.
+
+    Stated as "hidden **or configured archive**" rather than "hidden" alone: archive names are
+    configurable and need not start with a dot, so a rule based on the dot prefix would quietly treat
+    `archived/` as live content. Both checkers ask this one function.
     """
-    return not any(part.startswith(".") for part in relative.parts[:-1])
+    names = set(archive_names())
+    return any(part.startswith(".") or part in names for part in parts)  # type: ignore[union-attr]
+
+
+def archive_config_error() -> str:
+    """Empty string when every AGENT_ARCHIVE_DIRS entry lives inside the skill tree, else the reason.
+
+    A configuration that points outside the tree is refused loudly instead of raising ValueError in the
+    middle of a scan: an invalid configuration should not look like a crash. Both checkers call this.
+    """
+    root = skills_root().resolve()
+    for directory in archive_dirs():
+        try:
+            directory.resolve().relative_to(root)
+        except ValueError:
+            return f"AGENT_ARCHIVE_DIRS entry '{directory}' is outside the skill tree ({root})"
+    return ""
 
 
 def keep(name: str, default: int) -> int:
