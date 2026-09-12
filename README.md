@@ -3,6 +3,8 @@
 > A minimal, runnable reference for **layered agent context** — identity / user / memory / pointers —
 > plus the maintenance toolchain that keeps those layers from rotting.
 
+[中文说明](README.zh-CN.md) · this file is the English version
+
 Everything in this repository is **fictional example data**: the agent is "Alice", the user is "Sam",
 the host is `example-host`. Nothing here was copied from a real deployment. See [Scope](#scope).
 
