@@ -45,11 +45,22 @@ observable.
 
 ## 7. Documentation that trips the scanner that reads it
 
-Documentation is data to a checker, so examples written casually become false positives: a skill name
-written with its reference prefix looks like a broken link; a path written as a template becomes a
-"missing file"; a phrase in quotes after a heading name looks like a cross-reference to a section that
-does not exist. Write examples in a form that cannot trigger the check — or the checks start getting
-ignored, which is worse than not having them.
+Documentation is data to a checker, so examples written casually become false positives. Two real ones
+from this repository, both hit while building it:
+
+- a backticked path used as an illustration (`2026/03/notes.md`) resolves nowhere, so it is reported as a
+  broken link. Fixed by writing the placeholder form (`2026/03/<file>.md`) — a form the checker is told to
+  skip.
+- a skill that *discusses* not having a `references/INDEX.md` mentions the path in backticks, and the
+  mention is indistinguishable from a real reference. Fixed by describing it in words.
+
+Both were legitimate text and both would have been "fixed" by disabling the check — which is the real
+danger: a check that fires on correct writing gets turned off, and then it protects nothing. Write
+examples in a form that cannot trigger the check, and keep the trigger narrow.
+
+Also worth knowing: the checkers here read the four context files and live `SKILL.md` files only. A
+checker that also reads `README.md` and `docs/` will collect many more sentences that look like
+references, and needs the same discipline plus a wider allow-list.
 
 ## 8. Snapshot and archive scripts that delete as a side effect
 
@@ -61,8 +72,8 @@ operation — and it prints what it will delete before doing it.
 
 A "suspicious if fewer than 60% of tokens survive" rule looks reasonable and is effectively always
 true for short lines, while silently passing real losses in long ones. Every number in a check needs a
-sample on either side of it. If you have no samples, use the strict rule ("any distinctive token gone"),
-accept the false alarms, and let a human glance at them.
+sample on either side of it. If you have no samples, use the strict rules (any distinctive token gone, no
+phrase surviving), accept the false alarms, and let a human glance at them.
 
 ## 10. Config pointing at something that no longer exists
 

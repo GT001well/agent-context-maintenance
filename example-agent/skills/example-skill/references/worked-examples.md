@@ -1,7 +1,8 @@
 # Worked examples
 
-Two real edits against `example-agent/`, with the comparator's actual output. Reproduce them with
-`scripts/selftest.sh`, which asserts exactly these outcomes.
+Two real edits against `example-agent/`, with the comparator's actual output. `scripts/selftest.sh`
+exercises the same cases against a throwaway copy and asserts the exit codes; the numbers below were
+captured by running the commands by hand.
 
 ## Example 1 — rewording a sentence (must pass)
 
@@ -34,7 +35,7 @@ python3 scripts/post-change-compare.py "$AGENT_BACKUP_DIR/POINTERS.md.bak.<stamp
 Output:
 
 ```
-  L45: - **A vector index for cross-session recall.** Rejected for this deploym
+  L46: - **A vector index for cross-session recall.** Rejected for this deploym
          tokens gone: cross-session, deployment:, recall. | no phrase survives (14 checked)
 [!] 1 line(s) look lost — read them before trusting the edit
 ```
@@ -55,7 +56,7 @@ python3 scripts/post-change-compare.py "$AGENT_BACKUP_DIR/POINTERS.md.bak.<stamp
 Output:
 
 ```
-[v] no content lost (47 lines compared)
+[v] no content lost (48 lines compared)
 ```
 
 Exit code `0`. The tokens now exist in the pool, so the deletion is read as a move. This is why the

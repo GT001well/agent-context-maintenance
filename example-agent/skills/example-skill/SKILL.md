@@ -38,8 +38,10 @@ are what an agent sees in the skill list, so the trigger has to be at the start:
 
 ## What "suspicious" means
 
-A line is reported when it is missing verbatim **and** one of its distinctive tokens (identifiers,
-paths, numbers, CJK runs) is missing from the file as a whole. Rewording passes; deletion does not.
+A line is reported when it is missing verbatim **and** any of these also holds: a structured token
+(identifier, path, number) is gone from the file as a whole, a run of CJK text is gone, or none of the
+line's three-word phrases survives. Rewording passes; deletion does not. `--pool DIR_OR_FILE` marks
+content as moved rather than lost.
 
 ## Related references
 

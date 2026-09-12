@@ -22,6 +22,19 @@ if [ "$#" -lt 1 ]; then
 fi
 
 stamp="$(date +%Y%m%d_%H%M%S)"
+
+# Refuse to protect a tree with a backup directory inside it: backups there are picked up as content by
+# every index check, and a directory-level backup inside a skill tree can make a skill name ambiguous.
+for protected in "$AGENT_HOME" "$AGENT_SKILLS_ROOT"; do
+  [ -e "$protected" ] || continue
+  case "$(realpath -m "$AGENT_BACKUP_DIR")/" in
+    "$(realpath -m "$protected")"/*)
+      echo "[x] AGENT_BACKUP_DIR ($AGENT_BACKUP_DIR) is inside $protected." >&2
+      echo "[x] Backups must live outside what they protect; move it and re-run." >&2
+      exit 2 ;;
+  esac
+done
+
 mkdir -p "$AGENT_BACKUP_DIR"
 missing=0
 count=0

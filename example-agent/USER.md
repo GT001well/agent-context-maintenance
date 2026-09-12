@@ -31,8 +31,8 @@ reading a diff to reading a summary. Works on `example-host` (Linux, bash, Pytho
 ## Environment expectations
 
 - Sam works on a single Linux host; there is no second machine to fall back on.
-- Network access is restricted by an allowlist; when a fetch fails, the recovery ladder is in the
-  maintenance workflow notes rather than in this file.
+- Network access is restricted by an allowlist, and nothing leaves the host without being named in the
+  reply — that convention is recorded in `MEMORY.md`, where environment facts live.
 
 ## Related
 

@@ -50,6 +50,10 @@ assert "no backup was overwritten (2 copies on disk)" "$([ "$count" -eq 2 ] && e
 check "missing path is reported, not fatal" 1 $?
 "$SCRIPTS/pre-change-backup.sh" >/dev/null 2>&1
 check "no arguments is a usage error" 2 $?
+(AGENT_BACKUP_DIR="$AGENT_HOME/.backups" "$SCRIPTS/pre-change-backup.sh" "$AGENT_HOME/MEMORY.md" >/dev/null 2>&1)
+check "backup dir inside the agent home is refused" 2 $?
+(AGENT_BACKUP_DIR="$AGENT_SKILLS_ROOT/.backups" "$SCRIPTS/pre-change-backup.sh" "$AGENT_HOME/MEMORY.md" >/dev/null 2>&1)
+check "backup dir inside the skill tree is refused" 2 $?
 
 echo "[2] post-change-compare.py — both directions"
 cp -a "$AGENT_HOME/IDENTITY.md" "$WORK/identity.bak"

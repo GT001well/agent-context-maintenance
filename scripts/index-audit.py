@@ -41,10 +41,14 @@ MAX_DEPTH = 4
 
 
 def is_archived(path: Path, root: Path) -> bool:
-    """True for anything filed under an archive directory: archived skills are not live skills."""
+    """True for anything filed under a configured archive directory: archived skills are not live.
+
+    Only AGENT_ARCHIVE_DIRS counts. Other hidden directories are handled by the caller (they are not
+    audited as content, but they are not called "archived" either — the two checkers must agree on what
+    archives are, or a hidden directory gets treated differently by each of them.
+    """
     names = set(archive_names())
-    return any(part in names or (part.startswith(".") and part != ".") for part in
-               path.relative_to(root).parts[:-1])
+    return any(part in names for part in path.relative_to(root).parts[:-1])
 
 
 def skill_files(root: Path) -> List[Path]:

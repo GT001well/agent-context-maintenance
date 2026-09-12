@@ -59,7 +59,8 @@ a skill tree with an index convention, and six scripts that make edits and links
 
 ## Quick start
 
-No install, no dependencies beyond `bash`, `python3` (3.8+) and coreutils.
+No install. Dependencies: `bash`, `python3` (3.8+), coreutils, `tar`, and GNU `findutils` (the snapshot
+script uses `find -printf`).
 
 ```bash
 git clone <this repo>
@@ -96,11 +97,15 @@ content.
 The point is not ceremony. It is that the agent performing the edit cannot be the only witness to it:
 
 - `post-change-compare.py` exits **1** when a line from the backup no longer appears in the new file
-  *and* one of its distinctive tokens is gone from the whole file. It is a heuristic, deliberately
-  biased toward false alarms: a false alarm costs one glance, a silent loss costs the content.
-- `pointers-check.py` and `index-audit.py` exit **1** on their own dimensions and print file:line, so
-  "the checks are green" is a machine claim, not a feeling.
-- `--pool DIR` tells the comparison that content was *moved*, not lost (into a skill, another file).
+  *and* any of these is also true: a structured token (path, identifier, number) is gone from the whole
+  file, a run of CJK text is gone, or none of the line's three-word phrases survives. It is a heuristic,
+  deliberately biased toward false alarms: a false alarm costs one glance, a silent loss costs content.
+  Plain Latin words are not distinctive on their own, so rewording a sentence still passes.
+- `pointers-check.py` exits **1** on its own dimensions and reports `file:line`; `index-audit.py` exits
+  **1** on its own dimensions and reports paths. Either way, "the checks are green" is a machine claim,
+  not a feeling.
+- `--pool DIR_OR_FILE` tells the comparison that content was *moved*, not lost (into a skill, another
+  file).
 
 Full rules, including the ones that are counter-intuitive, are in `docs/maintenance-workflow.md`.
 
@@ -125,7 +130,8 @@ Full rules, including the ones that are counter-intuitive, are in `docs/maintena
 - All content is example content. The agent ("Alice"), the user ("Sam"), the host name, the paths,
   the skills and every fact in `example-agent/` are invented for demonstration.
 - The scripts are self-contained rewrites of a workflow that evolved elsewhere; they carry no
-  deployment-specific configuration and read every path from `config.example.env`.
+  deployment-specific configuration and read every path from `config.env` (copied from
+  `config.example.env`) or from the environment.
 - Tested on Linux (bash 5, Python 3.8+) only.
 
 ## License

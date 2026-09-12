@@ -35,25 +35,29 @@ python3 scripts/post-change-compare.py <backup> <edited>
 python3 scripts/post-change-compare.py <backup> <edited> --pool skills/    # content moved, not lost
 ```
 
-The comparator reports a line as **suspicious** when both hold:
+The comparator reports a line as **suspicious** when it no longer appears verbatim **and** any of these
+is also true:
 
-1. the line no longer appears verbatim in the edited file, **and**
-2. at least one of its distinctive tokens (identifiers, paths, numbers, runs of CJK text) is gone from
-   the edited file as a whole.
+1. a structured token of the line (identifier, path, file name, number) is gone from the edited file as a
+   whole, or
+2. a run of CJK text from the line is gone, or
+3. none of the line's three-word phrases survives anywhere.
 
-Both halves matter. (1) alone flags every reworded line — noise. (2) alone flags a word that moved
-between paragraphs — also noise. Together they specifically catch "this content is no longer anywhere".
+Condition 1 alone is not enough — ordinary Latin words are deliberately not treated as distinctive, so
+"deliberately" → "intentionally" is a reword, not a loss. Condition 3 is what carries English prose: a
+deleted paragraph loses every phrase it had, while a reworded sentence keeps most of them. The three
+signals together catch "this content is no longer anywhere" without turning every edit into a report.
 
 Exit code 1 means "look at these". It is deliberately biased toward false alarms: a false alarm costs a
 glance, an unnoticed loss costs the content. **Do not** replace this with a ratio threshold
 ("60% of tokens still present") — ratios look reasonable, are effectively always true on short lines,
 and silently pass real losses on long ones. Thresholds need samples behind them; if you have no
-samples, prefer the strict rule above.
+samples, prefer the strict rules above.
 
-`--pool DIR…` handles the legitimate case where content was moved (a paragraph promoted from `MEMORY.md`
-into a skill). It requires every distinctive token *and* every CJK run of the line to exist somewhere in
-the pool. Weaker versions of this check ("the longest run is in the pool") are satisfied by generic
-phrases and let real losses through.
+`--pool DIR_OR_FILE…` handles the legitimate case where content was moved (a paragraph promoted from
+`MEMORY.md` into a skill). It requires every distinctive token *and* every CJK run of the line to exist
+somewhere in the pool. Weaker versions of this check ("the longest run is in the pool") are satisfied by
+generic phrases and let real losses through.
 
 ## 4. Check
 
@@ -96,8 +100,9 @@ python3 scripts/archive-baks.py apply                     # pack, keep AGENT_ARC
 python3 scripts/archive-baks.py prune-archive 90 --apply  # delete archives older than 90 days
 ```
 
-`plan` is read-only and `apply` is the only thing that moves files. Old archives are removed only with
-`--apply`, and the accompanying file list is deleted with the archive, so no orphan lists accumulate.
+`plan` is read-only. `apply` is the only thing that packs; `prune-archive --apply` is the only thing that
+deletes. Old archives are removed only with `--apply`, and the accompanying file list is deleted with the
+archive, so no orphan lists accumulate.
 
 ## Testing a checker
 

@@ -54,9 +54,14 @@ A reference is resolved by trying, in order:
 1. relative to the file that contains it
 2. relative to the agent home
 3. relative to the repository root
-4. **suffix match anywhere in the repository** — because that is how people actually write references in
+4. relative to the current working directory
+5. **suffix match anywhere in the repository** — because that is how people actually write references in
    prose: a bare file name (`post-change-compare.py`) or a partial path (`references/INDEX.md`)
-5. the archive pass (below)
+6. the archive pass (below)
+
+Scope: the checkers read the four context files plus live `SKILL.md` files. They do **not** read
+`README.md` or `docs/` — those carry too many illustrative paths to distinguish from real references
+without a much wider allow-list, and a check that flags correct prose gets switched off.
 
 Without step 4 the checker reports correct writing as broken, and a checker that cries wolf gets
 disabled.
@@ -74,6 +79,10 @@ versus *lost* are different problems with different fixes. Filing content away i
 and a system where archiving produces the same alarm as deletion is a system where archiving is
 avoided.
 
+What counts as an archive is exactly the directories named in `AGENT_ARCHIVE_DIRS` (default `.archive`),
+resolved through one shared helper so the two checkers cannot disagree. Other hidden directories are
+neither audited as content nor reported as archived — they are simply not part of the tree audit.
+
 ### 3. Allow-list before accusation
 
 Legitimate non-path forms are exempt by construction: templates with `<placeholders>`, globs, URLs, and
@@ -84,10 +93,11 @@ real data.**
 
 ### 4. Documentation is data
 
-The scanner reads your docs, so an example written casually becomes a finding: a path in backticks that
-does not exist, a skill name with its reference prefix, a quoted phrase right after a heading name. Write
-examples in a non-triggering form (`2026/03/<file>.md`), or your own documentation becomes the first
-false alarms — and false alarms are how a check gets ignored.
+The scanner reads your docs, so an example written casually becomes a finding: a backticked path that
+does not exist, or a path mentioned in order to *deny* that it exists. Write examples in a form the
+checker is told to skip (`2026/03/<file>.md`), or your own documentation becomes the first false alarms
+— and false alarms are how a check gets ignored. This bit twice while building this repository; both
+cases are written up in `docs/pitfalls.md`.
 
 ### 5. Cross-references between injected files
 

@@ -6,8 +6,8 @@ codes the scripts in this repository use.
 | Script | Code | Meaning |
 |---|---|---|
 | `pre-change-backup.sh` | 0 | every argument was backed up |
-| | 1 | at least one argument did not exist (the rest were backed up) |
-| | 2 | usage error (no arguments) |
+| | 1 | at least one argument did not exist (the rest were backed up), or a copy failed |
+| | 2 | usage error, or `AGENT_BACKUP_DIR` lives inside the tree it protects |
 | `post-change-compare.py` | 0 | no line is suspicious |
 | | 1 | one or more lines look lost — read them |
 | | 2 | usage error, or a file could not be read |
