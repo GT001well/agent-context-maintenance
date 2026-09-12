@@ -100,7 +100,8 @@ The point is not ceremony. It is that the agent performing the edit cannot be th
   *and* any of these is also true: a structured token (path, identifier, number) is gone from the whole
   file, a run of CJK text is gone, or none of the line's three-word phrases survives. It is a heuristic,
   deliberately biased toward false alarms: a false alarm costs one glance, a silent loss costs content.
-  Plain Latin words are not distinctive on their own, so rewording a sentence still passes.
+  Plain Latin words are not distinctive on their own, so rewording a sentence still passes. Lines under
+  8 characters are not judged at all, and the report caps at 40 findings (it says how many it omitted).
 - `pointers-check.py` exits **1** on its own dimensions and reports `file:line`; `index-audit.py` exits
   **1** on its own dimensions and reports paths. Either way, "the checks are green" is a machine claim,
   not a feeling.

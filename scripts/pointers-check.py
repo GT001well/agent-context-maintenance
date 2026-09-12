@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _config import REPO_ROOT, agent_home, archive_dirs, archive_names, context_files, mutual_files, skills_root  # noqa: E402
+from _config import REPO_ROOT, agent_home, archive_dirs, audited, context_files, mutual_files, skills_root  # noqa: E402
 
 SKILL_REF = re.compile(r"skill:([A-Za-z0-9_.-]+)")
 CODE_SPAN = re.compile(r"`([^`\n]+)`")
@@ -45,10 +45,9 @@ def skill_dirs(root: Path) -> Dict[str, Path]:
     found: Dict[str, Path] = {}
     if not root.is_dir():
         return found
-    archived = set(archive_names())
     for skill_md in sorted(root.rglob("SKILL.md")):
         relative = skill_md.relative_to(root)
-        if len(relative.parts) > 4 or any(part in archived for part in relative.parts[:-1]):
+        if len(relative.parts) > 4 or not audited(relative):
             continue
         found.setdefault(skill_md.parent.name, skill_md.parent)
     return found
@@ -94,10 +93,29 @@ def archive_index() -> Tuple[Dict[str, Path], List[str]]:
             for skill_md in sorted(directory.rglob("SKILL.md")):
                 skills.setdefault(skill_md.parent.name, skill_md.parent)
             for path in sorted(directory.rglob("*")):
-                if path.is_file():
+                if not path.is_file():
+                    continue
+                try:
                     files.append(str(path.relative_to(root)))
+                except ValueError:  # a configured archive outside the tree: reported in main()
+                    continue
         _ARCHIVE_INDEX = (skills, files)
     return _ARCHIVE_INDEX
+
+
+def archive_config_error() -> str:
+    """Empty string when every AGENT_ARCHIVE_DIRS entry lives inside the skill tree, else the reason.
+
+    A configuration that points outside the tree is refused loudly rather than raising ValueError in
+    the middle of the scan: an invalid configuration should not look like a crash.
+    """
+    root = skills_root().resolve()
+    for directory in archive_dirs():
+        try:
+            directory.resolve().relative_to(root)
+        except ValueError:
+            return f"AGENT_ARCHIVE_DIRS entry '{directory}' is outside the skill tree ({root})"
+    return ""
 
 
 def scan_links(paths: List[Path], skills: Dict[str, Path]) -> List[str]:
@@ -175,14 +193,15 @@ def main(argv: List[str]) -> int:
     if not home.is_dir():
         print(f"[x] context directory not found: {home} (set AGENT_HOME)", file=sys.stderr)
         return 2
+    if config_error := archive_config_error():
+        print(f"[x] invalid configuration: {config_error}", file=sys.stderr)
+        return 2
 
     files = context_files()
     skills = skill_dirs(root)
-    archived_names = set(archive_names())
     live_skill_md = [
         path for path in sorted(root.rglob("SKILL.md"))
-        if len(path.relative_to(root).parts) <= 4
-        and not any(part in archived_names for part in path.relative_to(root).parts)
+        if len(path.relative_to(root).parts) <= 4 and audited(path.relative_to(root))
     ] if root.is_dir() else []
 
     entries = (

@@ -82,6 +82,16 @@ def archive_dirs() -> List[Path]:
     return [skills_root() / name for name in archive_names()]
 
 
+def audited(relative: Path) -> bool:
+    """False for anything inside a hidden directory: hidden paths are not live content.
+
+    Stated as "hidden" rather than "archived" on purpose. Configured archives (`.archive` by default)
+    are the common case, but both checkers must treat every hidden directory the same way, or a hidden
+    directory gets audited as a live skill by one of them and ignored by the other.
+    """
+    return not any(part.startswith(".") for part in relative.parts[:-1])
+
+
 def keep(name: str, default: int) -> int:
     raw = os.environ.get(name, "").strip()
     if not raw:

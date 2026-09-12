@@ -8,11 +8,12 @@
 #   * every backup lands in AGENT_BACKUP_DIR, never beside the original — a pile of `.bak` files next
 #     to the files they protect is how a context directory gets polluted and how a scanner starts
 #     counting backups as content
+#   * refuses to run when AGENT_BACKUP_DIR resolves inside AGENT_HOME or AGENT_SKILLS_ROOT (see below)
 #   * a path inside the skill tree is flattened relative to the tree, so the backup name still says
 #     where it came from
 #
-# Exit codes: 0 = everything backed up, 1 = some path did not exist (the rest were backed up),
-#             2 = usage error.
+# Exit codes: 0 = everything backed up, 1 = some path did not exist (the rest were backed up) or a copy
+#             failed, 2 = usage error or the backup directory lives inside the tree it protects.
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/_config.sh"
 

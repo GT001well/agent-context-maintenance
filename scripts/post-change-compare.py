@@ -108,7 +108,7 @@ def main(argv: List[str]) -> int:
         for entry in suspicious[:MAX_REPORTED]:
             print(entry)
         if len(suspicious) > MAX_REPORTED:
-            print(f"  ... and {len(suspicious) - MAX_REPORTED} more")
+            print(f"  [i] {len(suspicious) - MAX_REPORTED} more not shown (the cap is {MAX_REPORTED})")
 
     total_lines = len(backup_text.splitlines())
     if suspicious:

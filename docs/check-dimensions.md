@@ -63,7 +63,7 @@ Scope: the checkers read the four context files plus live `SKILL.md` files. They
 `README.md` or `docs/` — those carry too many illustrative paths to distinguish from real references
 without a much wider allow-list, and a check that flags correct prose gets switched off.
 
-Without step 4 the checker reports correct writing as broken, and a checker that cries wolf gets
+Without step 5 the checker reports correct writing as broken, and a checker that cries wolf gets
 disabled.
 
 ### 2. Three outcomes, and why the third matters
@@ -79,9 +79,11 @@ versus *lost* are different problems with different fixes. Filing content away i
 and a system where archiving produces the same alarm as deletion is a system where archiving is
 avoided.
 
-What counts as an archive is exactly the directories named in `AGENT_ARCHIVE_DIRS` (default `.archive`),
-resolved through one shared helper so the two checkers cannot disagree. Other hidden directories are
-neither audited as content nor reported as archived — they are simply not part of the tree audit.
+What counts as an archive is exactly the directories named in `AGENT_ARCHIVE_DIRS` (default `.archive`);
+a configured entry that resolves outside the skill tree is refused as a configuration error (exit 2)
+rather than skipped. Separately, **any** hidden directory (a dot-prefixed path component) is treated as
+non-live by both checkers through one shared helper — hidden content is neither audited as a skill nor
+reported as archived, so the two checkers cannot disagree about it.
 
 ### 3. Allow-list before accusation
 
@@ -93,11 +95,12 @@ real data.**
 
 ### 4. Documentation is data
 
-The scanner reads your docs, so an example written casually becomes a finding: a backticked path that
-does not exist, or a path mentioned in order to *deny* that it exists. Write examples in a form the
-checker is told to skip (`2026/03/<file>.md`), or your own documentation becomes the first false alarms
-— and false alarms are how a check gets ignored. This bit twice while building this repository; both
-cases are written up in `docs/pitfalls.md`.
+The scanner reads the context files and live `SKILL.md` files, so an example written casually in one of
+those becomes a finding: a backticked path that does not exist, or a path mentioned in order to *deny*
+that it exists. Write examples in a form the checker is told to skip (`2026/03/<file>.md`) — or, if the
+text is right and the check is wrong, widen the check. Decide which of the two is at fault; do not
+disable the check. This bit twice while building this repository; both cases are written up in
+`docs/pitfalls.md`.
 
 ### 5. Cross-references between injected files
 

@@ -33,8 +33,8 @@ verifies "every file names the other three" starts failing. Trim descriptions, n
 
 A backup directory under the skill tree gets scanned as content by every index check (inflating counts
 and adding orphan entries), and a *directory-level* backup inside the tree can make a loader report the
-skill name as ambiguous — the skill stops loading by its plain name. Rule: backups go outside the tree;
-the backup script should enforce it rather than trusting the caller.
+skill name as ambiguous — the skill stops loading by its plain name. Rule: backups go outside the tree,
+and the backup script enforces it with an explicit refusal rather than trusting the caller.
 
 ## 6. The editor is the only witness
 
@@ -46,17 +46,19 @@ observable.
 ## 7. Documentation that trips the scanner that reads it
 
 Documentation is data to a checker, so examples written casually become false positives. Two real ones
-from this repository, both hit while building it:
+from building this repository, and how each was actually resolved:
 
-- a backticked path used as an illustration (`2026/03/notes.md`) resolves nowhere, so it is reported as a
-  broken link. Fixed by writing the placeholder form (`2026/03/<file>.md`) — a form the checker is told to
-  skip.
-- a skill that *discusses* not having a `references/INDEX.md` mentions the path in backticks, and the
-  mention is indistinguishable from a real reference. Fixed by describing it in words.
+- an illustrative path written in backticks (`2026/03/notes.md`) resolves nowhere and was reported as a
+  broken link. Fixed by writing the placeholder form instead (`2026/03/<file>.md`), which the checker is
+  told to skip.
+- prose that *mentions* a file without meaning to point at it — a bare script name, a partial path — was
+  reported as broken. Fixed the other way round: the resolution ladder learned to suffix-match, because
+  "the file exists somewhere in the repository under that name" is what a human reading `references/INDEX.md`
+  in a sentence understands.
 
-Both were legitimate text and both would have been "fixed" by disabling the check — which is the real
-danger: a check that fires on correct writing gets turned off, and then it protects nothing. Write
-examples in a form that cannot trigger the check, and keep the trigger narrow.
+Two different repairs, one rule: **decide which of the two is wrong — the text or the check — and fix
+that one.** Neither case was solved by deleting the check, which is the failure mode to avoid: a check
+that fires on correct writing gets switched off, and then it protects nothing.
 
 Also worth knowing: the checkers here read the four context files and live `SKILL.md` files only. A
 checker that also reads `README.md` and `docs/` will collect many more sentences that look like

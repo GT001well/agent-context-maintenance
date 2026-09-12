@@ -18,7 +18,7 @@ codes the scripts in this repository use.
 | | 3 | the packing subprocess failed (nothing was deleted) |
 | `pointers-check.py` | 0 | every checked dimension is clean |
 | | 1 | at least one owned dimension has an entry |
-| | 2 | usage error / missing context directory |
+| | 2 | usage error / missing context directory / an `AGENT_ARCHIVE_DIRS` entry outside the skill tree |
 | `index-audit.py` | 0 | clean |
 | | 1 | at least one owned dimension has an entry |
 | | 2 | usage error / missing skill tree |

@@ -49,15 +49,21 @@ deleted paragraph loses every phrase it had, while a reworded sentence keeps mos
 signals together catch "this content is no longer anywhere" without turning every edit into a report.
 
 Exit code 1 means "look at these". It is deliberately biased toward false alarms: a false alarm costs a
-glance, an unnoticed loss costs the content. **Do not** replace this with a ratio threshold
+glance, an unnoticed loss costs the content.
+
+Two known limits, both documented rather than hidden: lines shorter than 8 characters are not judged at
+all (too little signal), and the report prints at most 40 findings, adding a line saying how many were
+omitted.
+
+**Do not** replace this with a ratio threshold
 ("60% of tokens still present") — ratios look reasonable, are effectively always true on short lines,
 and silently pass real losses on long ones. Thresholds need samples behind them; if you have no
 samples, prefer the strict rules above.
 
 `--pool DIR_OR_FILE…` handles the legitimate case where content was moved (a paragraph promoted from
-`MEMORY.md` into a skill). It requires every distinctive token *and* every CJK run of the line to exist
-somewhere in the pool. Weaker versions of this check ("the longest run is in the pool") are satisfied by
-generic phrases and let real losses through.
+`MEMORY.md` into a skill). Pool text is searched with the same rules as the edited file, so a token, a
+CJK run *or* a three-word phrase found in the pool counts as "still present". Weaker versions of this
+check ("the longest run is in the pool") are satisfied by generic phrases and let real losses through.
 
 ## 4. Check
 

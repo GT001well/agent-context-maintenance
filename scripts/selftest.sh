@@ -77,6 +77,20 @@ check "deleted bullet is caught" 1 $?
 python3 "$SCRIPTS/post-change-compare.py" "$WORK/pointers.bak" "$AGENT_HOME/POINTERS.md" --pool "$WORK/nothing" >/dev/null 2>&1
 check "still caught when the pool is empty" 1 $?
 
+# The report caps at 40 findings — and must say so, or a truncated list looks complete.
+python3 - "$WORK/many.md" <<'PY'
+import sys
+from pathlib import Path
+Path(sys.argv[1]).write_text("".join(f"line {i:03d} unique-token-{i:03d} port {8000 + i}\n" for i in range(45)),
+                             encoding="utf-8")
+PY
+cp -a "$WORK/many.md" "$WORK/many.bak"
+: > "$WORK/many.md"
+python3 "$SCRIPTS/post-change-compare.py" "$WORK/many.bak" "$WORK/many.md" >"$WORK/many-report" 2>&1
+check "45 lost lines are reported" 1 $?
+grep -q 'more not shown' "$WORK/many-report"
+assert "a truncated report says how many it omitted" $?
+
 echo "[3] pointers-check.py — both directions"
 python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1
 check "pristine tree is clean" 0 $?
@@ -122,6 +136,8 @@ mv "$AGENT_SKILLS_ROOT/.archive/another-skill" "$AGENT_SKILLS_ROOT/another-skill
 rmdir "$AGENT_SKILLS_ROOT/.archive"
 python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1
 check "restored skill resolves again" 0 $?
+(AGENT_ARCHIVE_DIRS="../outside" python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1)
+check "an archive dir outside the tree is a config error" 2 $?
 
 echo "[4c] loadable-content check"
 mkdir -p "$AGENT_SKILLS_ROOT/leftover"

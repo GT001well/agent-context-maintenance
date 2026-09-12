@@ -43,6 +43,9 @@ A line is reported when it is missing verbatim **and** any of these also holds: 
 line's three-word phrases survives. Rewording passes; deletion does not. `--pool DIR_OR_FILE` marks
 content as moved rather than lost.
 
+Two limits to know about: lines shorter than 8 characters are not judged (too little signal), and the
+report prints at most 40 findings, then says how many it omitted.
+
 ## Related references
 
 - `references/INDEX.md` — the index table for this skill's references
