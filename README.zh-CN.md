@@ -1,4 +1,4 @@
-# agent-context-layers
+# agent-context-maintenance
 
 > 一份**最小可跑**的参考实现：给长期运行的 AI agent 的**分层上下文**（身份 / 用户 / 记忆 / 指针），
 > 外加一套让这些层不会腐烂的维护工具链。
@@ -77,7 +77,7 @@
 
 ```bash
 git clone <本仓库>
-cd agent-context-layers
+cd agent-context-maintenance
 ./scripts/selftest.sh          # 对 example-agent/ 的一次性副本跑全部脚本
 ```
 

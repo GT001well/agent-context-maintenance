@@ -1,4 +1,4 @@
-# agent-context-layers
+# agent-context-maintenance
 
 > A minimal, runnable reference for **layered agent context** — identity / user / memory / pointers —
 > plus the maintenance toolchain that keeps those layers from rotting.
@@ -83,7 +83,7 @@ script uses `find -printf`).
 
 ```bash
 git clone <this repo>
-cd agent-context-layers
+cd agent-context-maintenance
 ./scripts/selftest.sh          # runs every script against a throwaway copy of example-agent/
 ```
 
