@@ -27,6 +27,23 @@ Two failure modes kill these files, and neither is "the agent forgot to write so
 This repo is the smallest thing that addresses both: four context files with a written contract,
 a skill tree with an index convention, and six scripts that make edits and links *checkable*.
 
+## The approach, in one screen
+
+1. **Split context by how often it is read, not by topic.** Identity, user and memory are injected every
+   turn, so they are a budget; pointers are read on demand, so they are an index. Grade every fact before
+   writing it down: **A** (needed every turn) / **B** (needed for a class of tasks → a skill, plus one
+   pointer) / **C** (recomputable → record the command, never the answer).
+2. **A change is not finished until it is checkable.** Back up first (a physical action, not an
+   intention), edit, compare against the backup, run the checks, snapshot. The rule underneath: *the
+   agent making the edit must not be the only witness to it.*
+3. **A check is only useful while it is trusted.** Freeze the finding IDs, give the exit code only to the
+   dimensions you own, keep each judgement in exactly one place, re-check the legitimate spellings
+   whenever a rule is tightened, and test in both directions: a harmless edit passes, a real loss fails.
+4. **Pointers have three outcomes, not two** — resolves / recoverable (archived) / broken. Collapsing
+   "filed away" into "lost" is how people learn not to file anything away.
+
+The details, including the counter-intuitive parts, are in `docs/`.
+
 ## Layout
 
 ```
@@ -134,6 +151,17 @@ Full rules, including the ones that are counter-intuitive, are in `docs/maintena
   deployment-specific configuration and read every path from `config.env` (copied from
   `config.example.env`) or from the environment.
 - Tested on Linux (bash 5, Python 3.8+) only.
+
+## Provenance
+
+This is not a port of an existing framework, and it names none: the four layers, the edit loop and the
+check numbering were derived from a maintenance workflow that evolved in practice around a single
+long-lived agent, and then stripped of every deployment-specific part.
+
+What it borrows are ordinary practices, used in their normal sense: write-ahead backup before editing,
+golden and snapshot testing, linters that own their own exit code, a two-phase `plan` then `apply` for
+anything destructive, append-never-overwrite, documentation treated as data that the checks read, and a
+review that arrives carrying the previous round's fix list.
 
 ## License
 
