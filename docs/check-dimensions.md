@@ -59,9 +59,11 @@ A reference is resolved by trying, in order:
    prose: a bare file name (`post-change-compare.py`) or a partial path (`references/INDEX.md`)
 6. the archive pass (below)
 
-Scope: the checkers read the four context files plus live `SKILL.md` files. They do **not** read
-`README.md` or `docs/` — those carry too many illustrative paths to distinguish from real references
-without a much wider allow-list, and a check that flags correct prose gets switched off.
+Scope: **for link scanning**, the checkers read the four context files plus live `SKILL.md` files. They
+do **not** scan `README.md` or `docs/` for references — those carry too many illustrative paths to
+distinguish from real references without a much wider allow-list, and a check that flags correct prose
+gets switched off. (Other dimensions have their own scope: the index audit also reads every
+`references/*.md` to size it, and the orphan-index dimension reads `references/INDEX.md`.)
 
 Without step 5 the checker reports correct writing as broken, and a checker that cries wolf gets
 disabled.
@@ -154,7 +156,7 @@ still true or still open.
 | | `[3]` | `references/INDEX.md` no SKILL.md points at |
 | | `[4]` | target only present in an archive (recoverable) |
 | | `[5]` | debt sentence: text claiming something is still missing |
-| | `[6]` | backticked absolute path that does not exist (opt-in) |
+| | `[6]` | backticked absolute path that does not exist (`AGENT_CHECK_ABSOLUTE_PATHS=1`) |
 | `index-audit.py` | `[A]` | frontmatter `name` missing or mismatched |
 | | `[B]` | three or more references but no index table |
 | | `[C]` | index entry with no file on disk (ghost) |

@@ -211,6 +211,32 @@ check "nested archive name: skipped by the index audit" 0 $?
 mv "$AGENT_SKILLS_ROOT/old/2026/another-skill" "$AGENT_SKILLS_ROOT/another-skill"
 rm -rf "$AGENT_SKILLS_ROOT/old"
 
+echo "[4f] a file referenced BY PATH that was archived"
+mkdir -p "$AGENT_SKILLS_ROOT/.archive/example-skill/references"
+echo "# only in this agent home" > "$AGENT_SKILLS_ROOT/example-skill/references/only-here.md"
+printf '\n- `references/only-here.md` — a reference local to this skill\n' >> "$AGENT_SKILLS_ROOT/example-skill/SKILL.md"
+python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1
+check "a reference that resolves is clean before archiving" 0 $?
+mv "$AGENT_SKILLS_ROOT/example-skill/references/only-here.md" \
+   "$AGENT_SKILLS_ROOT/.archive/example-skill/references/only-here.md"
+python3 "$SCRIPTS/pointers-check.py" >"$WORK/path-archive-out" 2>&1
+check "the same reference is reported once archived" 1 $?
+grep -q '\[4\]' "$WORK/path-archive-out"
+assert "and it is classified as recoverable, not broken" $?
+mv "$AGENT_SKILLS_ROOT/.archive/example-skill/references/only-here.md" \
+   "$AGENT_SKILLS_ROOT/example-skill/references/only-here.md"
+rm -rf "$AGENT_SKILLS_ROOT/.archive"
+rm -f "$AGENT_SKILLS_ROOT/example-skill/references/only-here.md"
+python3 - "$AGENT_SKILLS_ROOT/example-skill/SKILL.md" <<'PY'
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+path.write_text("".join(ln for ln in path.read_text(encoding="utf-8").splitlines(True)
+                        if "only-here.md" not in ln), encoding="utf-8")
+PY
+python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1
+check "clean again after the cleanup" 0 $?
+
 echo "[5] snapshot-context.sh"
 "$SCRIPTS/snapshot-context.sh" >/dev/null 2>&1
 check "snapshot writes without pruning" 0 $?

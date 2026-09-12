@@ -39,7 +39,7 @@ a skill tree with an index convention, and six scripts that make edits and links
 │   ├── design.md                why four layers, what belongs in each
 │   ├── maintenance-workflow.md  the edit loop and the rules that make it work
 │   ├── check-dimensions.md      how findings are numbered, and how pointers self-repair
-│   └── pitfalls.md              ten ways this system rots (and the fix)
+│   └── pitfalls.md              twelve ways this system rots (and the fix)
 ├── example-agent/               a demo agent home the scripts can act on
 │   ├── IDENTITY.md  USER.md  MEMORY.md  POINTERS.md
 │   └── skills/

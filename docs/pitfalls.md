@@ -60,9 +60,9 @@ Two different repairs, one rule: **decide which of the two is wrong — the text
 that one.** Neither case was solved by deleting the check, which is the failure mode to avoid: a check
 that fires on correct writing gets switched off, and then it protects nothing.
 
-Also worth knowing: the checkers here read the four context files and live `SKILL.md` files only. A
-checker that also reads `README.md` and `docs/` will collect many more sentences that look like
-references, and needs the same discipline plus a wider allow-list.
+Also worth knowing: for link scanning, the checkers read the four context files and live `SKILL.md`
+files only; `README.md` and `docs/` are out of scope. A checker that also reads those will collect many
+more sentences that look like references, and needs the same discipline plus a wider allow-list.
 
 ## 8. Snapshot and archive scripts that delete as a side effect
 

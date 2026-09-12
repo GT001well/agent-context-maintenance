@@ -35,7 +35,7 @@ python3 scripts/post-change-compare.py "$AGENT_BACKUP_DIR/POINTERS.md.bak.<stamp
 Output:
 
 ```
-  L46: - **A vector index for cross-session recall.** Rejected for this deploym
+  L50: - **A vector index for cross-session recall.** Rejected for this deploym
          tokens gone: cross-session, deployment:, recall. | no phrase survives (14 checked)
 [!] 1 line(s) look lost — read them before trusting the edit
 ```
@@ -56,7 +56,7 @@ python3 scripts/post-change-compare.py "$AGENT_BACKUP_DIR/POINTERS.md.bak.<stamp
 Output:
 
 ```
-[v] no content lost (48 lines compared)
+[v] no content lost (52 lines compared)
 ```
 
 Exit code `0`. The tokens now exist in the pool, so the deletion is read as a move. This is why the

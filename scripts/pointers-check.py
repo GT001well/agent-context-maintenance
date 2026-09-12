@@ -17,13 +17,14 @@ Dimensions (all owned — an entry in any of them sets exit code 1):
                           an archive directory (AGENT_ARCHIVE_DIRS, default `.archive`): reported as
                           recoverable rather than lost. A pointer is never allowed to fail silently just
                           because something was filed away.
-  [5] Debt sentence     — a context file that claims something does not exist yet ("TODO", "待建",
-                          "not yet written", …). Debt text is read every turn and mistaken for current
-                          state; either build it or state it as a fact. Text inside code spans is exempt:
-                          a phrase quoted in backticks is a mention, not a claim.
-  [6] Missing absolute path — a backticked absolute path that does not exist. OFF by default
-                          (AGENT_CHECK_ABSOLUTE_PATHS=1 enables it), because example data cannot satisfy
-                          absolute paths and a check that is red on a fresh clone is a check nobody runs.
+  [5] Debt sentence     — a context file (or a live SKILL.md) that claims something does not exist yet
+                          ("TODO", "待建", "not yet written", …). Debt text is read every turn and
+                          mistaken for current state; either build it or state it as a fact. Text inside
+                          code spans is exempt: a phrase quoted in backticks is a mention, not a claim.
+  [6] Missing absolute path — a backticked absolute path in one of the four context files that does not
+                          exist. OFF by default (`AGENT_CHECK_ABSOLUTE_PATHS=1` enables it), because
+                          example data cannot satisfy absolute paths and a check that is red on a fresh
+                          clone is a check nobody runs.
 
 Exit codes: 0 = clean, 1 = entries, 2 = usage error (missing directory) or an invalid
 `AGENT_ARCHIVE_DIRS` entry.
@@ -74,15 +75,28 @@ def skill_dirs(root: Path) -> Dict[str, Path]:
 
 
 def repo_files() -> List[str]:
-    """Every file path under the repository, relative to its root. Cached: one walk per run."""
+    """Every *live* file path under the repository, relative to its root. Cached: one walk per run.
+
+    Archived and hidden paths are excluded on purpose. If they were part of this index, a pointer to a
+    file that has been archived would still "resolve" through the suffix match and the recoverable
+    branch ([4]) could never fire.
+
+    Scope: this indexes the **repository** (the checkout these scripts live in). The live agent home is a
+    separate tree and is consulted earlier in the ladder, so a reference may legitimately resolve against
+    either — but a file's presence in the checkout does not excuse it having moved out of the live home,
+    which is why hidden/archived paths are dropped from both sides.
+    """
     global _REPO_FILES
     if _REPO_FILES is None:
         paths: List[str] = []
-        skip = {".git", ".backups", "archives", "__pycache__"}
+        skip = {".backups", "archives", "__pycache__"}
         for path in REPO_ROOT.rglob("*"):
-            if any(part in skip for part in path.parts) or not path.is_file():
+            if not path.is_file():
                 continue
-            paths.append(str(path.relative_to(REPO_ROOT)))
+            relative = path.relative_to(REPO_ROOT)
+            if any(part in skip for part in relative.parts) or non_live(relative.parts[:-1]):
+                continue
+            paths.append(str(relative))
         _REPO_FILES = paths
     return _REPO_FILES
 
@@ -273,7 +287,12 @@ def main(argv: List[str]) -> int:
         print(f"[i] context files not present (skipped): {', '.join(missing)}")
     total = len(entries)
     if total:
-        print(f"[!] {total} pointer problem(s) — [1] broken, [4] recoverable (archived)")
+        counts: Dict[str, int] = {}
+        for entry in entries:
+            dimension = entry.split(maxsplit=1)[0]
+            counts[dimension] = counts.get(dimension, 0) + 1
+        legend = " ".join(f"{dim}×{n}" for dim, n in sorted(counts.items()))
+        print(f"[!] {total} finding(s): {legend}")
         return 1
     print(f"[v] pointers ok ({len(files)} context file(s), {len(skills)} skill(s))")
     return 0

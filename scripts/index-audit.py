@@ -19,7 +19,7 @@ Owned dimensions (an entry in any of them sets exit code 1):
       this for both checkers.
 
 Information only (printed, never affects the exit code): a SKILL.md larger than 40 KB, which is worth
-splitting, but is a sizing opinion rather than a defect.
+splitting, or a reference file with almost no content in it — both a sizing opinion rather than a defect.
 
 Exit codes: 0 = clean, 1 = entries, 2 = usage error (missing skill tree) or an invalid
 `AGENT_ARCHIVE_DIRS` entry.
