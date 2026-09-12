@@ -30,11 +30,21 @@ done
 
 if [ "$prune" -eq 1 ]; then
   require_positive_int "$keep" "--prune" || exit 2
+  if [ "${#keep}" -gt 4 ]; then
+    echo "[x] --prune takes at most 4 digits (got '$keep') — refusing; nothing was deleted" >&2
+    exit 2
+  fi
 fi
 
 snapshot_root="$AGENT_BACKUP_DIR/snapshots"
 mkdir -p "$snapshot_root"
-dest="$snapshot_root/$(date +%Y%m%d_%H%M%S)"
+stamp="$(date +%Y%m%d_%H%M%S)"
+dedupe=0
+dest="$snapshot_root/$stamp"
+while [ -e "$dest" ]; do           # same-second rerun: never overwrite an existing snapshot
+  dedupe=$((dedupe + 1))
+  dest="$snapshot_root/${stamp}-$dedupe"
+done
 mkdir -p "$dest"
 
 written=0

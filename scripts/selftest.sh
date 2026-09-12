@@ -39,15 +39,19 @@ assert() { # <name> <condition: 0 = ok>
 }
 
 echo "[1] pre-change-backup.sh"
-"$SCRIPTS/pre-change-backup.sh" "$AGENT_HOME/MEMORY.md" >/dev/null 2>&1
+"$SCRIPTS/pre-change-backup.sh" "$AGENT_HOME/MEMORY.md" >"$WORK/backup-out" 2>&1
 check "backup a file inside the agent home" 0 $?
+grep -q 'rollback: cp -a' "$WORK/backup-out"
+assert "the backup prints its own rollback command" $?
 first="$(find "$AGENT_BACKUP_DIR" -maxdepth 1 -name 'MEMORY.md.bak.*' | head -1)"
 "$SCRIPTS/pre-change-backup.sh" "$AGENT_HOME/MEMORY.md" >/dev/null 2>&1
 check "rerun in the same second" 0 $?
 count="$(find "$AGENT_BACKUP_DIR" -maxdepth 1 -name 'MEMORY.md.bak.*' | wc -l)"
 assert "no backup was overwritten (2 copies on disk)" "$([ "$count" -eq 2 ] && echo 0 || echo 1)"
-"$SCRIPTS/pre-change-backup.sh" "$AGENT_HOME/does-not-exist.md" >/dev/null 2>&1
+"$SCRIPTS/pre-change-backup.sh" "$AGENT_HOME/does-not-exist.md" >"$WORK/missing-out" 2>&1
 check "missing path is reported, not fatal" 1 $?
+grep -q 'do not edit until the backup exists' "$WORK/missing-out"
+assert "a failed backup tells the caller to stop" $?
 "$SCRIPTS/pre-change-backup.sh" >/dev/null 2>&1
 check "no arguments is a usage error" 2 $?
 (AGENT_BACKUP_DIR="$AGENT_HOME/.backups" "$SCRIPTS/pre-change-backup.sh" "$AGENT_HOME/MEMORY.md" >/dev/null 2>&1)
@@ -102,6 +106,22 @@ cp -a "$WORK/pointers-clean.md" "$AGENT_HOME/POINTERS.md"
 python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1
 check "restored tree is clean again" 0 $?
 
+echo "[3b] debt sentences and the opt-in absolute-path check"
+cp -a "$AGENT_HOME/IDENTITY.md" "$WORK/identity-clean.md"
+printf '\n## Recovery\n\nThe recovery section is TODO: write it later.\n' >> "$AGENT_HOME/IDENTITY.md"
+python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1
+check "a debt sentence is reported" 1 $?
+printf 'See `TODO` and `待建` for the wording that is exempt.\n' >> "$AGENT_HOME/IDENTITY.md"
+python3 "$SCRIPTS/pointers-check.py" >"$WORK/debt-out" 2>&1
+check "quoted debt wording is still a debt when unquoted elsewhere" 1 $?
+cp -a "$WORK/identity-clean.md" "$AGENT_HOME/IDENTITY.md"
+python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1
+check "clean again after removing it" 0 $?
+python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1
+check "absolute paths are NOT checked by default" 0 $?
+(AGENT_CHECK_ABSOLUTE_PATHS=1 python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1)
+check "absolute paths are checked when enabled" 1 $?
+
 echo "[4] index-audit.py — both directions"
 python3 "$SCRIPTS/index-audit.py" >/dev/null 2>&1
 check "pristine skill tree is clean" 0 $?
@@ -122,6 +142,20 @@ path.write_text("".join(lines).replace("# ghost entry row\n", ""), encoding="utf
 PY
 python3 "$SCRIPTS/index-audit.py" >/dev/null 2>&1
 check "restored index is clean again" 0 $?
+printf 'almost nothing\n' > "$AGENT_SKILLS_ROOT/example-skill/references/tiny.md"
+printf '| `tiny.md` | a reference with almost no content |\n' >> "$AGENT_SKILLS_ROOT/example-skill/references/INDEX.md"
+python3 "$SCRIPTS/index-audit.py" >"$WORK/tiny-out" 2>&1
+check "an effectively empty reference does NOT fail the audit" 0 $?
+grep -q 'effectively empty' "$WORK/tiny-out"
+assert "but it is reported as an informational note" $?
+rm -f "$AGENT_SKILLS_ROOT/example-skill/references/tiny.md"
+python3 - "$AGENT_SKILLS_ROOT/example-skill/references/INDEX.md" <<'PY'
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+path.write_text("".join(ln for ln in path.read_text(encoding="utf-8").splitlines(True)
+                        if "tiny.md" not in ln), encoding="utf-8")
+PY
 
 echo "[4b] archive-aware pointer recovery"
 mkdir -p "$AGENT_SKILLS_ROOT/.archive"
@@ -186,6 +220,12 @@ assert "one snapshot directory exists" "$([ "$snap_count" -eq 1 ] && echo 0 || e
 check "non-numeric --prune is refused" 2 $?
 "$SCRIPTS/snapshot-context.sh" --prune 1 >/dev/null 2>&1
 check "--prune 1 keeps the newest" 0 $?
+"$SCRIPTS/snapshot-context.sh" >/dev/null 2>&1
+"$SCRIPTS/snapshot-context.sh" >/dev/null 2>&1
+snap_count="$(find "$AGENT_BACKUP_DIR/snapshots" -mindepth 1 -maxdepth 1 -type d | wc -l)"
+assert "back-to-back snapshots never overwrite each other (3 dirs)" "$([ "$snap_count" -eq 3 ] && echo 0 || echo 1)"
+"$SCRIPTS/snapshot-context.sh" --prune 99999 >/dev/null 2>&1
+check "--prune refuses an absurd keep count" 2 $?
 
 echo "[6] archive-baks.py"
 python3 "$SCRIPTS/archive-baks.py" plan --keep 1 >/dev/null 2>&1

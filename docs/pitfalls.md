@@ -1,6 +1,6 @@
 # Pitfalls
 
-Ten ways this system rots. Each one was observed, and each one is cheap to prevent and expensive to
+Twelve ways this system rots. Each one was observed, and each one is cheap to prevent and expensive to
 diagnose later.
 
 ## 1. Triggers written as judgement calls never fire
@@ -84,3 +84,20 @@ all: the feature is simply unavailable, and the only symptom is a status indicat
 "unavailable" with no explanation. When a component is removed, grep the configuration for its name in
 the same session. If a check exists that resolves configured names, wire it in — "is the configured
 provider actually registered?" is a one-line check that saves an hour of debugging the wrong layer.
+
+## 11. The silent downgrade
+
+A checker that cannot evaluate one of its inputs and quietly falls back to a weaker rule is worse than
+one that fails outright: the output stays green and the reader has no way to know that coverage changed.
+Two shapes of this: the judgement depends on a second tree that has moved (so it silently judges less),
+or a fallback list is used in place of the real one (the real one is complete, the fallback is not).
+
+Rule: degrade **loudly** — a line on stderr, or a distinct exit code — or refuse to run. Never swap the
+judgement silently, and never let a fallback stand in for the real thing without saying so.
+
+## 12. Appending without reading the tail
+
+Writing the next entry of a log, snapshot series or registry from memory produces duplicates, gaps, and
+entries in the wrong order. Read the current tail first — one command, one glance — then write. The cost
+is a single read; the cost of skipping it is an error that is invisible in the result, because the file
+always looks plausible.

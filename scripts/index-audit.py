@@ -39,6 +39,7 @@ from _config import archive_config_error, non_live, skills_root  # noqa: E402
 NAME_FIELD = re.compile(r"^name:\s*(.+?)\s*$", re.MULTILINE)
 INDEX_ROW = re.compile(r"`?([\w./-]+\.md)`?")
 BIG_SKILL = 40 * 1024
+TINY_FILE = 100
 MAX_DEPTH = 4
 
 
@@ -126,6 +127,10 @@ def audit(root: Path) -> Dict[str, List[str]]:
         for path in files:
             if path.name not in listed:
                 owned.append(f"[D] {index} — {path.relative_to(refs_dir)} exists but is not listed")
+        for path in files:
+            size = len(path.read_text(encoding="utf-8", errors="replace").strip())
+            if size < TINY_FILE:
+                info.append(f"[i] {path} — {size} characters of content, effectively empty")
     owned.extend(orphan_content(root))
     return {"owned": owned, "info": info}
 

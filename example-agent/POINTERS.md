@@ -33,6 +33,10 @@ Pointers are written once. When content moves, the pointer is updated in the sam
 
 ## 四、Backlog
 
+Housekeeping (see `docs/check-dimensions.md`, §9): when an item is finished it moves *out* of this file,
+into a log or nowhere. This file is read on every maintenance pass, so finished text costs attention
+forever and gets re-read as if it were still open.
+
 - [ ] Add a worked example of `--pool` (content moved into a skill rather than deleted) to
       `docs/maintenance-workflow.md`.
 - [ ] Decide whether `snapshot-context.sh` should also snapshot a skill tree, or stay context-only.

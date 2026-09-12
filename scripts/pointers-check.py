@@ -17,6 +17,13 @@ Dimensions (all owned — an entry in any of them sets exit code 1):
                           an archive directory (AGENT_ARCHIVE_DIRS, default `.archive`): reported as
                           recoverable rather than lost. A pointer is never allowed to fail silently just
                           because something was filed away.
+  [5] Debt sentence     — a context file that claims something does not exist yet ("TODO", "待建",
+                          "not yet written", …). Debt text is read every turn and mistaken for current
+                          state; either build it or state it as a fact. Text inside code spans is exempt:
+                          a phrase quoted in backticks is a mention, not a claim.
+  [6] Missing absolute path — a backticked absolute path that does not exist. OFF by default
+                          (AGENT_CHECK_ABSOLUTE_PATHS=1 enables it), because example data cannot satisfy
+                          absolute paths and a check that is red on a fresh clone is a check nobody runs.
 
 Exit codes: 0 = clean, 1 = entries, 2 = usage error (missing directory) or an invalid
 `AGENT_ARCHIVE_DIRS` entry.
@@ -25,6 +32,7 @@ Exit codes: 0 = clean, 1 = entries, 2 = usage error (missing directory) or an in
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
@@ -45,6 +53,8 @@ from _config import (  # noqa: E402
 SKILL_REF = re.compile(r"skill:([A-Za-z0-9_.-]+)")
 CODE_SPAN = re.compile(r"`([^`\n]+)`")
 PATH_LIKE = re.compile(r"^[\w./-]+\.(md|py|sh|json|env|toml|yaml)$")
+ABSOLUTE_PATH = re.compile(r"^/[\w./+-]+$")
+DEBT = re.compile(r"待建|待补|待验证|未入库|TODO|FIXME|not yet written|to be written", re.IGNORECASE)
 SKIP_MARKERS = ("<", ">", "*", "…", "...", "$")
 _REPO_FILES: List[str] | None = None
 _ARCHIVE_INDEX: Tuple[Dict[str, Path], List[str]] | None = None
@@ -170,6 +180,37 @@ def scan_mutual_edges(names: List[str]) -> List[str]:
     return entries
 
 
+def scan_debt(paths: List[Path]) -> List[str]:
+    """[5] Sentences that say something is still missing.
+
+    Injected text claiming "TODO / 待建 / not yet written" is read on every turn and taken for current
+    state. The repair is always one of two things: build it, or restate it as a fact. Text inside code
+    spans is stripped first — a phrase quoted in backticks is a mention, not a claim.
+    """
+    entries: List[str] = []
+    for path in paths:
+        if not path.is_file():
+            continue
+        for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            for hit in set(DEBT.findall(CODE_SPAN.sub("", line))):
+                entries.append(f"[5] {path}:{number}  debt phrase '{hit}' — build it or state it as a fact")
+    return entries
+
+
+def scan_absolute_paths(paths: List[Path]) -> List[str]:
+    """[6] Backticked absolute paths that do not exist. Opt-in: see the module docstring."""
+    entries: List[str] = []
+    for path in paths:
+        if not path.is_file():
+            continue
+        for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            for span in CODE_SPAN.findall(line):
+                candidate = span.strip()
+                if ABSOLUTE_PATH.match(candidate) and not Path(candidate).exists():
+                    entries.append(f"[6] {path}:{number}  `{candidate}` does not exist")
+    return entries
+
+
 def scan_orphan_indexes(root: Path) -> List[str]:
     entries: List[str] = []
     if not root.is_dir():
@@ -195,10 +236,8 @@ def main(argv: List[str]) -> int:
     args = parser.parse_args(argv)
 
     if args.context_dir:
-        import os
         os.environ["AGENT_HOME"] = str(Path(args.context_dir).expanduser())
     if args.skills_root:
-        import os
         os.environ["AGENT_SKILLS_ROOT"] = str(Path(args.skills_root).expanduser())
 
     home = agent_home()
@@ -221,7 +260,10 @@ def main(argv: List[str]) -> int:
         scan_links(files + live_skill_md, skills)
         + scan_mutual_edges(mutual_files())
         + scan_orphan_indexes(root)
+        + scan_debt(files + live_skill_md)
     )
+    if os.environ.get("AGENT_CHECK_ABSOLUTE_PATHS", "").strip().lower() in ("1", "true", "yes", "on"):
+        entries += scan_absolute_paths(files)
 
     if not args.quiet:
         for entry in entries:

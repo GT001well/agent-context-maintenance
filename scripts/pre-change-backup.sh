@@ -70,5 +70,10 @@ for src in "$@"; do
 done
 
 echo "[i] next: edit the file, then run: python3 scripts/post-change-compare.py <backup> <file>"
-[ "$missing" -eq 0 ] || echo "[!] $count backed up, some paths were missing"
-exit "$missing"
+if [ "$missing" -ne 0 ]; then
+  echo "[x] $count backed up, some targets were NOT — do not edit until the backup exists" >&2
+  exit 1
+fi
+echo "[i] rollback: cp -a <backup> <original path>"
+echo "[i] keep backups until their owner says they can go; they are the comparison baseline, not junk"
+exit 0

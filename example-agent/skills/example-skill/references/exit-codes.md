@@ -25,8 +25,9 @@ codes the scripts in this repository use.
 
 ## Why "owned dimensions" matters
 
-A check prints some findings as information only — for example, an oversized `SKILL.md`, which is a
-sizing opinion rather than a defect. Those never set the exit code.
+A check prints some findings as information only — for example, an oversized `SKILL.md`, or a reference
+file with almost no content in it. Both are worth a look and neither is a defect. Informational findings
+never set the exit code.
 
 The reasoning is practical: an exit code that is red every single day carries no information, so people
 stop looking at it, which is strictly worse than having no exit code at all. A check must be green on a

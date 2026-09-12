@@ -125,6 +125,26 @@ pointers were embedded there, they go with it, silently, because nothing was che
 An index table that its own skill never references is unreachable: the file exists, the entries are
 correct, and nothing will ever read it. Cheap to check, invisible otherwise.
 
+### 8. Debt sentences
+
+Injected text that says something is still missing — `TODO`, "待建", "not yet written" — is read on every
+turn and taken for current state. "The recovery section is TODO" is a claim about the world that will be
+believed; it is not a plan. The repair is always one of two: build it, or restate it as a fact. Quoted
+text is exempt, so a phrase inside backticks is a mention rather than a claim.
+
+This is cheap to check and catches a specific class of rot: the file stays syntactically fine and
+semantically wrong.
+
+### 9. Finished work leaves the queue
+
+The backlog is in a file that is read on every maintenance pass, so finished items kept "for history"
+are paid for forever and, worse, get re-read as if still open. The rule: when an item is done, move it
+out (into a log, or delete it) in the same session, leaving only open items plus the deliberate
+"evaluated and rejected — do not re-open" list, which is a *decision*, not a debt.
+
+Same reasoning as layer sizing: the registry is read, therefore it must only contain things that are
+still true or still open.
+
 ## The dimensions shipped here
 
 | Checker | ID | Dimension |
@@ -133,6 +153,8 @@ correct, and nothing will ever read it. Cheap to check, invisible otherwise.
 | | `[2]` | a context file that does not name the others |
 | | `[3]` | `references/INDEX.md` no SKILL.md points at |
 | | `[4]` | target only present in an archive (recoverable) |
+| | `[5]` | debt sentence: text claiming something is still missing |
+| | `[6]` | backticked absolute path that does not exist (opt-in) |
 | `index-audit.py` | `[A]` | frontmatter `name` missing or mismatched |
 | | `[B]` | three or more references but no index table |
 | | `[C]` | index entry with no file on disk (ghost) |
@@ -140,7 +162,7 @@ correct, and nothing will ever read it. Cheap to check, invisible otherwise.
 | | `[E]` | duplicate skill directory name (ambiguous lookup) |
 | | `[F]` | unclosed code fence |
 | | `[G]` | directory with content but no SKILL.md |
-| | `[i]` | informational: oversized SKILL.md (never sets the exit code) |
+| | `[i]` | informational: oversized SKILL.md, effectively empty reference file (never sets the exit code) |
 
 ## Numbering your own checks
 
