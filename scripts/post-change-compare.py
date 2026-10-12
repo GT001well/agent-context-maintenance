@@ -10,11 +10,17 @@ file *and* any of these is also true:
   * one of its **structured tokens** (paths, identifiers, file names, numbers — anything containing a
     digit or one of `._/:-@`) is gone from the edited file as a whole
   * one of its runs of CJK text (2+ characters) is gone
-  * none of its **3-word phrases** survives, for lines with enough words to judge
+  * none of its **3-word phrases** survives, for a line with enough words to carry one (3 or more)
+  * a line too short to carry a phrase (1-2 words) where not one of its words survives anywhere
 
 Ordinary Latin words are deliberately *not* treated as distinctive on their own: "deliberately" ->
 "intentionally" is a reword, not a loss, and flagging it would make the check useless noise. Phrases
 are what carry English prose, so a deleted paragraph loses every phrase it had.
+
+Phrases are collected **per line**, from the edited file and from every pool. Flattening both sides into
+one word stream (the behaviour this check shipped with) invents phrases by joining the end of one line
+to the start of the next, and an invented phrase then counts as a survival — which weakens the check
+exactly where it matters: the deleted line whose neighbours are untouched.
 
 `--pool` marks content as *moved* rather than lost: a token or phrase counts as present when it exists
 in the edited file or anywhere in the pool (a skill directory, for example).
@@ -76,14 +82,20 @@ def main(argv: List[str]) -> int:
 
     pools = pool_texts(args.pool)
     searchable = edited_text + "\n" + "\n".join(pools.values())
-    surviving_words = words_of(searchable)
-    surviving_phrases = phrases(surviving_words)
+    surviving_words = set(words_of(searchable))
+    surviving_phrases: Set[str] = set()
+    for text in [edited_text, *pools.values()]:
+        for raw_line in text.splitlines():
+            surviving_phrases |= phrases(words_of(raw_line))
     edited_lines = {line.strip() for line in edited_text.splitlines() if line.strip()}
 
     suspicious: List[str] = []
+    too_short = 0
     for number, raw in enumerate(backup_text.splitlines(), 1):
         line = raw.strip()
         if len(line) < 8 or line in edited_lines:
+            if len(line) < 8:
+                too_short += 1
             continue
         reasons: List[str] = []
 
@@ -96,10 +108,15 @@ def main(argv: List[str]) -> int:
             reasons.append("text gone: " + ", ".join(gone_cjk[:2]))
 
         line_words = words_of(line)
-        if len(line_words) >= PHRASE_WORDS + 1:
-            own = phrases(line_words)
-            if own and not (own & surviving_phrases):
+        own = phrases(line_words)
+        if own:
+            if not (own & surviving_phrases):
                 reasons.append(f"no phrase survives ({len(own)} checked)")
+        elif line_words and not any(word in surviving_words for word in line_words):
+            # One or two words: too short to carry a phrase, so the only usable signal is that not a
+            # single word of the line survives. Loosening this to "any word survived" would fire on
+            # every short line that happens to share a word with the rest of the file.
+            reasons.append(f"no word survives ({len(line_words)} checked)")
 
         if reasons:
             suspicious.append(f"  L{number}: {line[:72]}\n         " + " | ".join(reasons))
@@ -109,6 +126,10 @@ def main(argv: List[str]) -> int:
             print(entry)
         if len(suspicious) > MAX_REPORTED:
             print(f"  [i] {len(suspicious) - MAX_REPORTED} more not shown (the cap is {MAX_REPORTED})")
+        if too_short:
+            # A skipped line is not a passed line: say how many were never judged, or a clean report
+            # reads as "everything was checked".
+            print(f"  [i] {too_short} line(s) under 8 characters were not judged (too little signal)")
 
     total_lines = len(backup_text.splitlines())
     if suspicious:

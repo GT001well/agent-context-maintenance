@@ -10,9 +10,11 @@ Usage:
 `--keep` (default 3, or `AGENT_ARCHIVE_KEEP`) per source stay where they are, the rest are packed into
 `<backup dir>/archives/baks-archive-<stamp>.tar.gz` with a matching `-filelist.txt`.
 
-`prune-archive` refuses to run without a valid day count: a destructive argument with a missing or
-malformed value exits 2 rather than falling back to an implicit default. The file list is deleted
-together with its archive, so orphan lists never accumulate. Without `--apply` it only lists.
+Destructive arguments refuse malformed values instead of falling back to an implicit default:
+`prune-archive` needs a valid day count, and `--keep` needs an integer in 1..100000 (the default is 3 or
+`AGENT_ARCHIVE_KEEP`; `--keep 0`, which would pack every backup, is refused rather than accepted).
+The file list is deleted together with its archive, so orphan lists never accumulate. Without `--apply`
+it only lists.
 
 Exit codes: 0 = ok (including "nothing to do" and dry runs), 2 = usage/argument error,
              3 = the packing subprocess failed.
@@ -22,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -132,6 +135,15 @@ def main(argv: List[str]) -> int:
     prune_node.add_argument("--from", dest="source", default=None)
     args = parser.parse_args(argv)
 
+    if args.command in ("plan", "apply") and args.keep_n is not None \
+            and not re.fullmatch(r"[1-9][0-9]{0,5}", args.keep_n):
+        # ASCII digits only: str.isdigit() accepts superscripts that int() then rejects, and `--keep 0`
+        # would mean "pack every backup". `apply` is the destructive step, so no implicit default.
+        print(f"[x] --keep needs a positive integer (1..100000), got '{args.keep_n}' — refusing\n"
+              f"usage: archive-baks.py plan | apply [--keep N] | prune-archive <days> [--apply]",
+              file=sys.stderr)
+        return 2
+
     root = Path(args.source).expanduser() if getattr(args, "source", None) else backup_dir()
     if not root.is_dir():
         print(f"[x] backup directory not found: {root} (set AGENT_BACKUP_DIR)", file=sys.stderr)
@@ -140,7 +152,8 @@ def main(argv: List[str]) -> int:
     if args.command == "prune-archive":
         return prune(args.days, args.apply, root)
 
-    keep_n = int(args.keep_n) if args.keep_n and args.keep_n.isdigit() else keep("AGENT_ARCHIVE_KEEP", 3)
+    # The CLI value was validated above; `keep()` validates the environment variable (and warns).
+    keep_n = int(args.keep_n) if args.keep_n else keep("AGENT_ARCHIVE_KEEP", 3)
     candidates, sources = split_groups(collect(root), keep_n)
     describe(candidates, sources, keep_n, root)
     if not candidates:

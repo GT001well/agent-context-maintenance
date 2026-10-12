@@ -66,6 +66,41 @@ sed -i 's/Voice: plain and technical, first person, no emoji, no filler\./Voice:
 python3 "$SCRIPTS/post-change-compare.py" "$WORK/identity.bak" "$AGENT_HOME/IDENTITY.md" >/dev/null 2>&1
 check "reworded sentence passes" 0 $?
 
+# A short line of plain Latin words carries no structured token and no CJK, so the phrase signal is the
+# only one available for it; anything shorter than a phrase has to fall back to word survival.
+printf 'copy the draft\n' > "$WORK/short.md"
+cp -a "$WORK/short.md" "$WORK/short.bak"
+: > "$WORK/short.md"
+python3 "$SCRIPTS/post-change-compare.py" "$WORK/short.bak" "$WORK/short.md" >/dev/null 2>&1
+check "a deleted short line is caught" 1 $?
+printf 'copy the draft\n' > "$WORK/short-pool.md"
+printf 'unrelated text\n' > "$WORK/short.md"
+python3 "$SCRIPTS/post-change-compare.py" "$WORK/short.bak" "$WORK/short.md" --pool "$WORK/short-pool.md" >/dev/null 2>&1
+check "the same line passes when it moved into the pool" 0 $?
+printf 'regenerate cache\n' > "$WORK/two-word.md"
+cp -a "$WORK/two-word.md" "$WORK/two-word.bak"
+printf 'completely different text\n' > "$WORK/two-word.md"
+python3 "$SCRIPTS/post-change-compare.py" "$WORK/two-word.bak" "$WORK/two-word.md" >/dev/null 2>&1
+check "a deleted two-word line is caught too" 1 $?
+
+# Phrases are collected per line, so a phrase can only survive inside a whole line: one that the edit
+# splits across a line break is reported, and one that stays inside a line is not.
+printf 'alpha beta gamma\n' > "$WORK/perline.bak"
+printf 'alpha beta\ngamma\n' > "$WORK/perline.md"
+python3 "$SCRIPTS/post-change-compare.py" "$WORK/perline.bak" "$WORK/perline.md" >/dev/null 2>&1
+check "a phrase split across two lines does not count as survival" 1 $?
+printf 'x alpha beta gamma y\n' > "$WORK/perline.md"
+python3 "$SCRIPTS/post-change-compare.py" "$WORK/perline.bak" "$WORK/perline.md" >/dev/null 2>&1
+check "the same phrase inside one line still passes" 0 $?
+
+# A skipped line is not a passed line: the run says how many were too short to judge.
+printf 'x y z\nkeep this line long enough\n' > "$WORK/short-skip.bak"
+cp -a "$WORK/short-skip.bak" "$WORK/short-skip.md"
+python3 "$SCRIPTS/post-change-compare.py" "$WORK/short-skip.bak" "$WORK/short-skip.md" >"$WORK/short-skip-out" 2>&1
+check "an unchanged file is clean" 0 $?
+grep -q 'not judged' "$WORK/short-skip-out"
+assert "and the report says how many lines it skipped" $?
+
 cp -a "$AGENT_HOME/POINTERS.md" "$WORK/pointers.bak"
 python3 - "$AGENT_HOME/POINTERS.md" <<'PY'
 import sys
@@ -80,6 +115,14 @@ check "deleted bullet is caught" 1 $?
 
 python3 "$SCRIPTS/post-change-compare.py" "$WORK/pointers.bak" "$AGENT_HOME/POINTERS.md" --pool "$WORK/nothing" >/dev/null 2>&1
 check "still caught when the pool is empty" 1 $?
+
+# A pool entry that cannot be read is announced, never silently dropped.
+printf '\377\376\000binary\n' > "$WORK/pool-binary.bin"
+python3 "$SCRIPTS/post-change-compare.py" "$WORK/pointers.bak" "$AGENT_HOME/POINTERS.md" \
+  --pool "$WORK/pool-binary.bin" >"$WORK/pool-skip-out" 2>&1
+check "an unreadable pool entry still reports the loss" 1 $?
+grep -q 'not readable text' "$WORK/pool-skip-out"
+assert "and the skipped pool file is counted out loud" $?
 
 # The report caps at 40 findings — and must say so, or a truncated list looks complete.
 python3 - "$WORK/many.md" <<'PY'
@@ -105,6 +148,60 @@ check "unresolvable skill pointer is caught" 1 $?
 cp -a "$WORK/pointers-clean.md" "$AGENT_HOME/POINTERS.md"
 python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1
 check "restored tree is clean again" 0 $?
+
+# A backup name is not a cross-reference: `IDENTITY.md.bak.20260101_000000` contains the string, and a
+# substring test accepted it as one.
+cp -a "$AGENT_HOME/USER.md" "$WORK/user-clean.md"
+python3 - "$AGENT_HOME/USER.md" <<'PY'
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+path.write_text(path.read_text(encoding="utf-8").replace("IDENTITY.md", "IDENTITY.md.bak.20260101_000000"),
+                encoding="utf-8")
+PY
+python3 "$SCRIPTS/pointers-check.py" >"$WORK/bak-ref-out" 2>&1
+check "a backup name is not a cross-reference" 1 $?
+grep -q 'does not mention IDENTITY.md' "$WORK/bak-ref-out"
+assert "and the report names the missing edge" $?
+cp -a "$WORK/user-clean.md" "$AGENT_HOME/USER.md"
+python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1
+check "restored cross-reference is clean again" 0 $?
+
+# A reference aimed at the wrong skill: the file exists, just not where the line says it does.
+mkdir -p "$AGENT_SKILLS_ROOT/another-skill/references"
+printf '# shared notes\n' > "$AGENT_SKILLS_ROOT/another-skill/references/shared-notes.md"
+printf '\nThe notes are in `references/shared-notes.md` under skill:example-skill.\n' >> "$AGENT_HOME/IDENTITY.md"
+python3 "$SCRIPTS/pointers-check.py" >"$WORK/misaimed-out" 2>&1
+check "a reference aimed at the wrong skill is caught" 1 $?
+grep -q 'lives under skill:another-skill' "$WORK/misaimed-out"
+assert "and the report names the skill that holds it" $?
+python3 - "$AGENT_HOME/IDENTITY.md" <<'PY'
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+path.write_text(path.read_text(encoding="utf-8").replace("under skill:example-skill",
+                                                         "under skill:another-skill"), encoding="utf-8")
+PY
+python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1
+check "naming the skill that holds it is clean" 0 $?
+
+# A full stop after a skill name is punctuation, not part of the name — and stripping it must not make a
+# name that really is absent resolve.
+printf '\nMissing on purpose: skill:no-such-skill. See above.\n' >> "$AGENT_HOME/IDENTITY.md"
+python3 "$SCRIPTS/pointers-check.py" >"$WORK/dot-skill-out" 2>&1
+check "a skill name followed by a full stop still resolves" 1 $?
+grep -q 'skill:no-such-skill — no such skill' "$WORK/dot-skill-out"
+assert "and a genuinely missing name is still caught" $?
+rm -f "$AGENT_SKILLS_ROOT/another-skill/references/shared-notes.md"
+python3 - "$AGENT_HOME/IDENTITY.md" <<'PY'
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+path.write_text("".join(ln for ln in path.read_text(encoding="utf-8").splitlines(True)
+                        if "shared-notes.md" not in ln and "no-such-skill" not in ln), encoding="utf-8")
+PY
+python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1
+check "clean again after removing the mis-aimed line" 0 $?
 
 echo "[3b] debt sentences and the opt-in absolute-path check"
 cp -a "$AGENT_HOME/IDENTITY.md" "$WORK/identity-clean.md"
@@ -254,6 +351,10 @@ assert "back-to-back snapshots never overwrite each other (3 dirs)" "$([ "$snap_
 check "--prune refuses an absurd keep count" 2 $?
 
 echo "[6] archive-baks.py"
+python3 "$SCRIPTS/archive-baks.py" plan --keep abc >/dev/null 2>&1
+check "--keep with a non-numeric value is refused" 2 $?
+python3 "$SCRIPTS/archive-baks.py" plan --keep 0 >/dev/null 2>&1
+check "--keep 0 is refused (it would pack everything)" 2 $?
 python3 "$SCRIPTS/archive-baks.py" plan --keep 1 >/dev/null 2>&1
 check "plan runs read-only" 0 $?
 python3 "$SCRIPTS/archive-baks.py" apply --keep 1 >/dev/null 2>&1

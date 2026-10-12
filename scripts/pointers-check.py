@@ -9,9 +9,14 @@ Dimensions (all owned — an entry in any of them sets exit code 1):
   [1] Broken links      — `skill:name` references whose skill does not exist, and backticked relative
                           paths (`scripts/pre-change-backup.sh`, `references/INDEX.md`) that resolve
                           neither relative to the containing file, nor to the agent home, nor to the repo.
-  [2] Missing cross-refs — each file listed in AGENT_MUTUAL_FILES must name the other files. These
-                          edges are what keeps the non-injected layer (POINTERS.md) findable; trimming
-                          text for size is how they disappear silently.
+                          A path on a line that also names a `skill:` is aimed at that skill: if the file
+                          only lives under a *different* skill, it is reported as mis-aimed rather than
+                          missing (the reader following it ends up in the wrong place either way).
+  [2] Missing cross-refs — each file listed in AGENT_MUTUAL_FILES must name the other files, as files.
+                          These edges are what keeps the non-injected layer (POINTERS.md) findable;
+                          trimming text for size is how they disappear silently. A mention only counts
+                          when the name is not part of a longer name: `USER.md` is a reference, while
+                          `USER.md.bak.20261012` is a backup of one, not a pointer to it.
   [3] Orphan index      — a `references/INDEX.md` that its own SKILL.md never points at.
   [4] Archived target   — a pointer that no longer resolves from the live tree but *does* resolve inside
                           an archive directory (AGENT_ARCHIVE_DIRS, default `.archive`): reported as
@@ -51,7 +56,10 @@ from _config import (  # noqa: E402
     skills_root,
 )
 
-SKILL_REF = re.compile(r"skill:([A-Za-z0-9_.-]+)")
+# `skill:name`. Dots may appear inside a name (`skill:a.b`), but a trailing full stop is sentence
+# punctuation: a greedy character class swallowed it, so `skill:example-skill.` at the end of a sentence
+# was reported as a skill that does not exist.
+SKILL_REF = re.compile(r"skill:([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*)")
 CODE_SPAN = re.compile(r"`([^`\n]+)`")
 PATH_LIKE = re.compile(r"^[\w./-]+\.(md|py|sh|json|env|toml|yaml)$")
 ABSOLUTE_PATH = re.compile(r"^/[\w./+-]+$")
@@ -59,6 +67,7 @@ DEBT = re.compile(r"待建|待补|待验证|未入库|TODO|FIXME|not yet written
 SKIP_MARKERS = ("<", ">", "*", "…", "...", "$")
 _REPO_FILES: List[str] | None = None
 _ARCHIVE_INDEX: Tuple[Dict[str, Path], List[str]] | None = None
+_SKILL_FILES: Dict[str, str] | None = None
 
 
 def skill_dirs(root: Path) -> Dict[str, Path]:
@@ -159,7 +168,8 @@ def scan_links(paths: List[Path], skills: Dict[str, Path]) -> List[str]:
         if not path.is_file():
             continue
         for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
-            for name in SKILL_REF.findall(line):
+            named = SKILL_REF.findall(line)
+            for name in named:
                 if name in skills:
                     continue
                 if name in archived_skills:
@@ -175,8 +185,27 @@ def scan_links(paths: List[Path], skills: Dict[str, Path]) -> List[str]:
                     entries.append(f"[4] {path}:{number}  `{candidate}` — only present in an archive "
                                    f"directory (recoverable, not lost)")
                     continue
+                if named:
+                    owners = owners_of(candidate)
+                    if any(owner in named for owner in owners):
+                        continue  # the skill this line names is the one holding the file
+                    if owners:
+                        entries.append(f"[1] {path}:{number}  `{candidate}` lives under "
+                                       f"skill:{owners[0]}, but this line names skill:{named[0]} — "
+                                       f"re-point it or move the file")
+                        continue
                 entries.append(f"[1] {path}:{number}  `{candidate}` does not resolve")
     return entries
+
+
+def mentions(text: str, name: str) -> bool:
+    """True when `name` is used as a file reference, not as the prefix of a longer file name.
+
+    A bare `name in text` test also matches `USER.md.bak.20261012`, so a file whose only trace of its
+    neighbour was a backup path counted as cross-referencing it. The lookarounds keep a trailing full
+    stop (`... see USER.md.`) legal and refuse a dotted continuation (`.bak`, `.old`).
+    """
+    return re.search(rf"(?<![\w.-]){re.escape(name)}(?!\.[A-Za-z0-9])", text) is not None
 
 
 def scan_mutual_edges(names: List[str]) -> List[str]:
@@ -189,9 +218,29 @@ def scan_mutual_edges(names: List[str]) -> List[str]:
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         for other in names:
-            if other != name and other not in text:
+            if other != name and not mentions(text, other):
                 entries.append(f"[2] {path} — does not mention {other}")
     return entries
+
+
+def skill_file_owners() -> Dict[str, str]:
+    """{path relative to the skill tree: skill name}. Cached: one walk per run."""
+    global _SKILL_FILES
+    if _SKILL_FILES is None:
+        owners: Dict[str, str] = {}
+        root = skills_root()
+        for name, directory in skill_dirs(root).items():
+            for path in sorted(directory.rglob("*")):
+                if path.is_file():
+                    owners[str(path.relative_to(root))] = name
+        _SKILL_FILES = owners
+    return _SKILL_FILES
+
+
+def owners_of(candidate: str) -> List[str]:
+    """Skill names holding a file that matches `candidate` by full relative path or by suffix."""
+    return sorted({name for rel, name in skill_file_owners().items()
+                   if rel == candidate or rel.endswith("/" + candidate)})
 
 
 def scan_debt(paths: List[Path]) -> List[str]:

@@ -132,8 +132,14 @@ def keep(name: str, default: int) -> int:
 
 
 def pool_texts(paths: List[str]) -> Dict[str, str]:
-    """Read `--pool` arguments into {path: text}. A directory contributes every readable text file."""
+    """Read `--pool` arguments into {path: text}. A directory contributes every readable text file.
+
+    Files that are not readable text are skipped **with a count printed**: a pool entry that vanishes
+    makes the comparison stricter (content looks lost), and a degraded input that says nothing is how a
+    check starts lying about what it actually saw.
+    """
     collected: Dict[str, str] = {}
+    skipped = 0
     for item in paths:
         path = Path(item).expanduser()
         candidates: List[Path]
@@ -148,5 +154,8 @@ def pool_texts(paths: List[str]) -> Dict[str, str]:
             try:
                 collected[str(candidate)] = candidate.read_text(encoding="utf-8")
             except (UnicodeDecodeError, OSError):
+                skipped += 1
                 continue  # binary or unreadable: not a text pool
+    if skipped:
+        print(f"[!] {skipped} pool file(s) were not readable text and were skipped")
     return collected

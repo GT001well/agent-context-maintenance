@@ -18,8 +18,9 @@ Owned dimensions (an entry in any of them sets exit code 1):
       (`.archive`, `.tmp`, …) or is a configured archive name — one shared `non_live()` helper decides
       this for both checkers.
 
-Information only (printed, never affects the exit code): a SKILL.md larger than 40 KB, which is worth
-splitting, or a reference file with almost no content in it — both a sizing opinion rather than a defect.
+Information only — `[i]`, printed and never affecting the exit code: a SKILL.md larger than 40 KB, which
+is worth splitting, or a reference file with almost no content in it — both a sizing opinion rather than
+a defect.
 
 Exit codes: 0 = clean, 1 = entries, 2 = usage error (missing skill tree) or an invalid
 `AGENT_ARCHIVE_DIRS` entry.

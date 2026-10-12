@@ -5,8 +5,10 @@
 
 [中文说明](README.zh-CN.md) · this file is the English version
 
-Everything in this repository is **fictional example data**: the agent is "Alice", the user is "Sam",
-the host is `example-host`. Nothing here was copied from a real deployment. See [Scope](#scope).
+Everything in this repository is **example data**: the agent is "Alice", the user is "Sam", the host is
+`example-host`. No file, path or name was taken from a live deployment; the lessons in `docs/` are the
+one part that is not invented, and they carry nothing that identifies where they came from. See
+[Scope](#scope).
 
 ## Why
 
@@ -119,8 +121,11 @@ The point is not ceremony. It is that the agent performing the edit cannot be th
   *and* any of these is also true: a structured token (path, identifier, number) is gone from the whole
   file, a run of CJK text is gone, or none of the line's three-word phrases survives. It is a heuristic,
   deliberately biased toward false alarms: a false alarm costs one glance, a silent loss costs content.
-  Plain Latin words are not distinctive on their own, so rewording a sentence still passes. Lines under
-  8 characters are not judged at all, and the report caps at 40 findings (it says how many it omitted).
+  Plain Latin words are not distinctive on their own, so rewording a longer sentence still passes.
+  Phrases are matched **per line**, on both sides, so a phrase cannot be invented by joining one line to
+  the next; a line of one or two words is too short to carry a phrase and is reported only when not one
+  of its words survives anywhere. Lines under 8 characters are not judged at all (the run says how many
+  it skipped), and the report caps at 40 findings (it says how many it omitted).
 - `pointers-check.py` exits **1** on its own dimensions and reports `file:line`; `index-audit.py` exits
   **1** on its own dimensions and reports paths. Either way, "the checks are green" is a machine claim,
   not a feeling.
@@ -143,12 +148,18 @@ Full rules, including the ones that are counter-intuitive, are in `docs/maintena
 8. **Pointers get three outcomes, not two** — resolves / recoverable (archived) / broken. Collapsing
    "filed away" into "lost" throws away the part that makes a report actionable.
 9. **A checker needs its own exit code** — but only for the dimensions it owns, or the code becomes noise.
-10. **Self-test in both directions.** "Reworded text passes" and "deleted text is flagged" are two different tests.
+10. **Self-test in both directions — then break the rule on purpose.** "Reworded text passes" and
+    "deleted text is flagged" are two different tests; an assertion that also passes with the old
+    judgement put back is a regression guard, not coverage of the rule.
 
 ## Scope
 
-- All content is example content. The agent ("Alice"), the user ("Sam"), the host name, the paths,
-  the skills and every fact in `example-agent/` are invented for demonstration.
+- All *data* is example data. The agent ("Alice"), the user ("Sam"), the host name, the paths, the skills
+  and every fact in `example-agent/` are invented for demonstration; no real file, host or person
+  appears anywhere in this repository.
+- The lessons in `docs/` are not invented: they come from one long-lived practice, with the identifying
+  details (names, hosts, paths, credentials) removed. The numbers quoted there are measurements from that
+  practice, not demo figures.
 - The scripts are self-contained rewrites of a workflow that evolved elsewhere; they carry no
   deployment-specific configuration and read every path from `config.env` (copied from
   `config.example.env`) or from the environment.

@@ -29,8 +29,8 @@ of its own. Tables for a one-line directory are overhead.
 
 | References in the skill | Convention |
 |---|---|
-| 3 or more files | one `references/INDEX.md` table; the skill body carries a one-line pointer to it |
-| fewer than 3 files | no table; mention each file inline where it is relevant |
+| 3 or more files | one `references/INDEX.md` table is required; the skill body carries a one-line pointer to it |
+| fewer than 3 files | optional; mention each file inline where it is relevant, or keep a table anyway if the directory is likely to grow |
 | nested directories | the index table lists the real path (`2026/03/<file>.md`, not `2026/`) |
 
 The contract for the `description` field, including what to do when a skill is adopted from elsewhere,

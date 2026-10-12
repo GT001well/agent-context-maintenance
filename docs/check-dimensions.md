@@ -39,6 +39,10 @@ without running anything.
 - **Informational findings** are printed and never affect the code — a sizing opinion, or a condition
   in a file the author does not control. A code that is red every day carries no information, and a
   check nobody reads is worse than no check.
+- **A degradation is announced.** A check that cannot read an input says so, and either enters the exit
+  code or states why it does not. Skipping something quietly is how a green code ends up having looked
+  at less than it claims: a skipped pool entry, for instance, makes a comparison *stricter* rather than
+  looser, so it is printed and stays informational.
 - **"Nothing to do" is 0**, not an error. A scheduled job that reports failure whenever there is
   nothing to pack trains everyone to ignore its output.
 
@@ -151,7 +155,7 @@ still true or still open.
 
 | Checker | ID | Dimension |
 |---|---|---|
-| `pointers-check.py` | `[1]` | broken `skill:` reference or unresolvable path |
+| `pointers-check.py` | `[1]` | broken `skill:` reference, unresolvable path, or a path aimed at the wrong skill |
 | | `[2]` | a context file that does not name the others |
 | | `[3]` | `references/INDEX.md` no SKILL.md points at |
 | | `[4]` | target only present in an archive (recoverable) |
@@ -166,6 +170,24 @@ still true or still open.
 | | `[G]` | directory with content but no SKILL.md |
 | | `[i]` | informational: oversized SKILL.md, effectively empty reference file (never sets the exit code) |
 
+## What is deliberately left to the deployment
+
+Two things that look like missing checks are not missing. Each needs knowledge this repository cannot
+have, and wiring it in would make the green here mean less:
+
+- **A warning *before* something gets archived**, rather than the recoverable finding after the fact. It
+  needs a staleness rule ("idle for 30 days, auto-archive at 90"), and that belongs to whatever manages
+  the skill tree, not to a checker that only reads files. A deployment with such a rule should hand the
+  list over rather than have a general reference freeze one team's policy.
+- **Checking that the subject of a "we decided not to change this" entry still exists.** That works when
+  such entries are numbered and registered in a companion file. Here they are ordinary prose, so `[1]`
+  already covers every path they backtick; a second check would only rename the first.
+- **Checking that the on-demand file is pointed at with *timing*, not just by name.** The rule is real
+  (a bare list of file names is what a trim shortens first), but the check is wording: it needs a list of
+  phrases that mean "read it when…", and three perfectly legitimate ways of writing the anchor were each
+  reported as a failure when this was tried. A check that is red on healthy prose gets turned off, which
+  is the same argument that makes `[6]` opt-in. Keep the rule in prose, in `docs/design.md`.
+
 ## Numbering your own checks
 
 1. **List the failure modes you have actually hit.** Not the ones you can imagine — imagined checks
@@ -174,4 +196,7 @@ still true or still open.
 3. Split owned from informational, then wire only owned dimensions into the exit code.
 4. Test every check in both directions: a harmless edit must pass, a real loss must be caught. A check
    that has only ever run against healthy input proves nothing.
-5. Freeze the IDs. Append new ones; renumber only if you have measured what renumbering costs.
+5. **Break the rule on purpose** before trusting the test: revert the judgement to the old one and
+   confirm the case that covers it goes red. An assertion that passes in both worlds is a regression
+   guard, not evidence that the rule works — keep it, but do not count it as coverage.
+6. Freeze the IDs. Append new ones; renumber only if you have measured what renumbering costs.

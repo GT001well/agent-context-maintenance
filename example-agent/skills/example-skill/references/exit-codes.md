@@ -14,7 +14,7 @@ codes the scripts in this repository use.
 | `snapshot-context.sh` | 0 | snapshots written (nothing deleted without `--prune`) |
 | | 2 | no context file found, or `--prune` got an invalid keep count (non-numeric, below 1, or more than four digits) |
 | `archive-baks.py` | 0 | done — including "nothing to pack" and dry runs |
-| | 2 | usage error / missing backup directory / invalid day count |
+| | 2 | usage error / missing backup directory / invalid day count or `--keep` |
 | | 3 | the packing subprocess failed (nothing was deleted) |
 | `pointers-check.py` | 0 | every checked dimension is clean |
 | | 1 | at least one owned dimension has an entry |

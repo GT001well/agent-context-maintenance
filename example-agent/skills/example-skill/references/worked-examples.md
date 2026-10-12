@@ -16,13 +16,16 @@ python3 scripts/post-change-compare.py "$AGENT_BACKUP_DIR/IDENTITY.md.bak.<stamp
 Output:
 
 ```
+  [i] 11 line(s) under 8 characters were not judged (too little signal)
 [v] no content lost (35 lines compared)
 ```
 
 Exit code `0`. The word `filler` survived, the phrases around it survived, and the substituted words are
 ordinary English — so the line counts as reworded, not lost. This is the case that a naive "line no
 longer present verbatim" check gets wrong, and the reason ordinary Latin words are not treated as
-distinctive.
+distinctive. The run also says how many lines it never judged (`11` here — headings and other short
+rows): a skipped line is not a line that passed, and reporting the count is the difference between a
+clean report and a report that quietly looked at less than it claims.
 
 ## Example 2 — deleting a bullet (must be caught)
 
@@ -37,6 +40,7 @@ Output:
 ```
   L50: - **A vector index for cross-session recall.** Rejected for this deploym
          tokens gone: cross-session, deployment:, recall. | no phrase survives (14 checked)
+  [i] 13 line(s) under 8 characters were not judged (too little signal)
 [!] 1 line(s) look lost — read them before trusting the edit
 ```
 
@@ -50,18 +54,24 @@ If the bullet was promoted into a skill instead of deleted, say so with `--pool`
 
 ```bash
 python3 scripts/post-change-compare.py "$AGENT_BACKUP_DIR/POINTERS.md.bak.<stamp>" "$AGENT_HOME/POINTERS.md" \
-    --pool skills/
+    --pool "$AGENT_SKILLS_ROOT"
 ```
 
 Output:
 
 ```
+  [i] 13 line(s) under 8 characters were not judged (too little signal)
 [v] no content lost (52 lines compared)
 ```
 
 Exit code `0`. The tokens now exist in the pool, so the deletion is read as a move. This is why the
 flag exists: without it, every reorganization of content produces a wall of false alarms, and a check
 that cries wolf on every reorganisation gets ignored exactly when it matters.
+
+A pool path that does not resolve is reported (`[!] pool path not found`) and skipped, so a stale path
+makes the run *stricter*, not looser: the edit looks like a loss until the path is fixed. That is why the
+command above names `"$AGENT_SKILLS_ROOT"` rather than a bare `skills/`, which resolves to nothing when
+the script is run from the repository root.
 
 ## Example 3 — a pointer whose target was archived (recoverable, not lost)
 

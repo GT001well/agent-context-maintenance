@@ -33,18 +33,19 @@ are what an agent sees in the skill list, so the trigger has to be at the start:
 4. If content legitimately moved elsewhere, re-run with the destination as a pool:
 
    ```bash
-   python3 scripts/post-change-compare.py <backup> <file> --pool skills/
+   python3 scripts/post-change-compare.py <backup> <file> --pool "$AGENT_SKILLS_ROOT"
    ```
 
 ## What "suspicious" means
 
 A line is reported when it is missing verbatim **and** any of these also holds: a structured token
-(identifier, path, number) is gone from the file as a whole, a run of CJK text is gone, or none of the
-line's three-word phrases survives. Rewording passes; deletion does not. `--pool DIR_OR_FILE` marks
-content as moved rather than lost.
+(identifier, path, number) is gone from the file as a whole, a run of CJK text is gone, none of the
+line's three-word phrases survives (phrases are matched per line, so they cannot be invented across a
+line break), or the line is only one or two words long and not one of those words survives. Rewording a
+longer sentence passes; deletion does not. `--pool DIR_OR_FILE` marks content as moved rather than lost.
 
-Two limits to know about: lines shorter than 8 characters are not judged (too little signal), and the
-report prints at most 40 findings, then says how many it omitted.
+Two limits to know about: lines shorter than 8 characters are not judged (too little signal, and the run
+says how many it skipped), and the report prints at most 40 findings, then says how many it omitted.
 
 ## Related references
 
