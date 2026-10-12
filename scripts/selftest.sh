@@ -334,6 +334,55 @@ PY
 python3 "$SCRIPTS/pointers-check.py" >/dev/null 2>&1
 check "clean again after the cleanup" 0 $?
 
+echo "[4g] three references and no index; a nested path listed the wrong way"
+printf '# a second note\n' > "$AGENT_SKILLS_ROOT/another-skill/references/second-note.md"
+printf '# a third note\n' > "$AGENT_SKILLS_ROOT/another-skill/references/third-note.md"
+python3 "$SCRIPTS/index-audit.py" >"$WORK/noindex-out" 2>&1
+check "three references with no INDEX.md is caught" 1 $?
+grep -q '\[B\]' "$WORK/noindex-out"
+assert "and it is reported as a missing index" $?
+printf '# References — index\n\n| File | What it contains |\n|---|---|\n' > "$AGENT_SKILLS_ROOT/another-skill/references/INDEX.md"
+printf '| `frontmatter-contract.md` | one |\n| `second-note.md` | two |\n| `third-note.md` | three |\n' \
+  >> "$AGENT_SKILLS_ROOT/another-skill/references/INDEX.md"
+python3 "$SCRIPTS/index-audit.py" >/dev/null 2>&1
+check "adding the index clears it" 0 $?
+rm -f "$AGENT_SKILLS_ROOT/another-skill/references/INDEX.md" \
+      "$AGENT_SKILLS_ROOT/another-skill/references/second-note.md" \
+      "$AGENT_SKILLS_ROOT/another-skill/references/third-note.md"
+
+# A nested file is listed by its real path. A bare name is a row for a file that is not there, and a
+# directory name is a row that names no file at all.
+python3 - "$AGENT_SKILLS_ROOT/third-skill/references/INDEX.md" <<'PY'
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+path.write_text(path.read_text(encoding="utf-8").replace("`2026/03/decision-log.md`", "`decision-log.md`"),
+                encoding="utf-8")
+PY
+python3 "$SCRIPTS/index-audit.py" >"$WORK/nested-out" 2>&1
+check "a nested file listed by its name alone is caught" 1 $?
+grep -q 'is not on disk' "$WORK/nested-out"
+assert "and it reads as a ghost entry" $?
+python3 - "$AGENT_SKILLS_ROOT/third-skill/references/INDEX.md" <<'PY'
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+path.write_text(path.read_text(encoding="utf-8").replace("`decision-log.md`", "`2026/03/`"), encoding="utf-8")
+PY
+python3 "$SCRIPTS/index-audit.py" >"$WORK/nested-dir-out" 2>&1
+check "a row naming the directory instead is caught" 1 $?
+grep -q 'exists but is not listed' "$WORK/nested-dir-out"
+assert "and it reads as a coverage gap" $?
+python3 - "$AGENT_SKILLS_ROOT/third-skill/references/INDEX.md" <<'PY'
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+path.write_text(path.read_text(encoding="utf-8").replace("`2026/03/`", "`2026/03/decision-log.md`"),
+                encoding="utf-8")
+PY
+python3 "$SCRIPTS/index-audit.py" >/dev/null 2>&1
+check "listing the real path is clean again" 0 $?
+
 echo "[5] snapshot-context.sh"
 "$SCRIPTS/snapshot-context.sh" >/dev/null 2>&1
 check "snapshot writes without pruning" 0 $?

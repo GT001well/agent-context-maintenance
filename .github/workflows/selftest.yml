@@ -1,0 +1,20 @@
+name: checks
+
+# The same three commands the repository asks a human to run before trusting an edit. Dependencies are
+# the ones the README lists and nothing else: bash, python3, coreutils, tar, GNU findutils.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: self-test against a throwaway copy of example-agent/
+        run: ./scripts/selftest.sh
+      - name: pointers and cross-references
+        run: python3 scripts/pointers-check.py
+      - name: skill tree against its index tables
+        run: python3 scripts/index-audit.py

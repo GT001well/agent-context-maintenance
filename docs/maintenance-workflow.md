@@ -118,7 +118,7 @@ Snapshots are cheap and timestamped; pruning is explicit and prints what it will
 Never make "keep the last N" an implicit side effect of taking a snapshot: the failure mode (an empty
 snapshot directory) is discovered exactly when it is needed.
 
-## 6. Archive (occasionally)
+## 6. Archive, occasionally
 
 ```bash
 python3 scripts/archive-baks.py plan                      # show what would be packed

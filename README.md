@@ -7,8 +7,39 @@
 
 Everything in this repository is **example data**: the agent is "Alice", the user is "Sam", the host is
 `example-host`. No file, path or name was taken from a live deployment; the lessons in `docs/` are the
-one part that is not invented, and they carry nothing that identifies where they came from. See
-[Scope](#scope).
+one part that is not invented, and they carry nothing that identifies where they came from.
+
+## Who this applies to
+
+An agent needs this when three things are true at once: (1) files are loaded or injected when a session
+starts, (2) the agent writes some of its own long-lived notes, and (3) it **compacts or summarises** its
+context when the window fills. The third one is what makes the other two dangerous. When history gets
+summarised, anything that lived only in the conversation becomes somebody's summary of it, while a written
+file is still itself.
+
+The ones with the most at stake are **self-maintaining**: the agent writes its own skills, keeps notes or
+a diary, and reads them back in a later session. There, a compaction does not just lose a conversation, it
+loses part of the agent's own working memory. Where a product's self-writing behaviour is not evident, the
+table below does not claim it; the three conditions are what decide.
+
+That shape is not specific to one product. As of this writing it describes, among others:
+
+| Agent | Long-lived notes it loads | Writes its own notes? | How the context gets compacted |
+|---|---|---|---|
+| Claude Code | `CLAUDE.md`, plus memory files loaded at conversation start | — | automatic compaction as the window fills |
+| Cline | `.clinerules` | — | context-window management that summarises older turns |
+| Codex CLI | `AGENTS.md` | — | auto-compact at a token threshold |
+| Cursor | `.cursor/rules`, saved memories | saves memories itself | conversation summarisation, memories |
+| Gemini CLI | `GEMINI.md` | — | `/compress`, plus an automatic threshold |
+| GenericAgent | on-disk notes and seed code | self-evolving by design | compacts what it carries, to keep decision-relevant density up |
+| Hermes Agent | `SOUL.md` and curated memory files, injected every turn | maintains its own skills and memory | context compaction, resumed from a summary plus stored state |
+| OpenClaw | `MEMORY.md` plus a tree of Markdown files in the workspace; daily logs read at session start | writes daily memory notes and skills | compaction near the top of the window |
+| open-strix | memory blocks and files, committed to its own repository | schedules and audits its own work | managed by the harness it runs on |
+
+Those names are examples, not a compatibility claim: the products change faster than the shape does, and
+this repository is not affiliated with any of them. Check the three conditions against whatever you are
+running. With only the first, the four-layer split is overkill. With all three, the layers below are the
+cheapest thing that keeps the notes from rotting.
 
 ## Why
 
@@ -31,20 +62,17 @@ Two failure modes kill these files, and neither is "the agent forgot to write so
 This repo is the smallest thing that addresses both: four context files with a written contract,
 a skill tree with an index convention, and six scripts that make edits and links *checkable*.
 
-## The approach, in one screen
+## The approach
 
-1. **Split context by how often it is read, not by topic.** Identity, user and memory are injected every
-   turn, so they are a budget; pointers are read on demand, so they are an index. Grade every fact before
-   writing it down: **A** (needed every turn) / **B** (needed for a class of tasks → a skill, plus one
-   pointer) / **C** (recomputable → record the command, never the answer).
-2. **A change is not finished until it is checkable.** Back up first (a physical action, not an
-   intention), edit, compare against the backup, run the checks, snapshot. The rule underneath: *the
-   agent making the edit must not be the only witness to it.*
-3. **A check is only useful while it is trusted.** Freeze the finding IDs, give the exit code only to the
-   dimensions you own, keep each judgement in exactly one place, re-check the legitimate spellings
-   whenever a rule is tightened, and test in both directions: a harmless edit passes, a real loss fails.
-4. **Pointers have three outcomes, not two** — resolves / recoverable (archived) / broken. Collapsing
-   "filed away" into "lost" is how people learn not to file anything away.
+1. **Split context by how often it is read, not by topic.** Injected files are a budget; on-demand files
+   are an index. Grade every fact before writing it down: **A** every turn, **B** a skill plus one
+   pointer, **C** recomputable (record the command, never the answer).
+2. **A change is not finished until it is checkable.** Back up, edit, compare against the backup, run the
+   checks. Underneath: the agent making the edit must not be the only witness to it.
+3. **A check is only useful while it is trusted.** Freeze the IDs; only owned dimensions set the exit
+   code; one judgement, one home; both directions tested, a harmless edit passes and a real loss fails.
+4. **Pointers have three outcomes, not two** (resolves / recoverable / broken). Collapsing "filed away"
+   into "lost" teaches people not to file anything away.
 
 The details, including the counter-intuitive parts, are in `docs/`.
 
@@ -54,18 +82,24 @@ The details, including the counter-intuitive parts, are in `docs/`.
 .
 ├── README.md                    this file
 ├── README.zh-CN.md              Chinese version
+├── CHANGELOG.md                 what changed, newest first
 ├── LICENSE                      MIT
+├── .editorconfig                formatting, so an editor agrees with the repository
 ├── config.example.env           every knob the scripts read
+├── .github/workflows/selftest.yml   the same checks, on every push
 ├── docs/
 │   ├── design.md                why four layers, what belongs in each
 │   ├── maintenance-workflow.md  the edit loop and the rules that make it work
 │   ├── check-dimensions.md      how findings are numbered, and how pointers self-repair
+│   ├── writing-a-check.md       the walkthrough for adding one
+│   ├── incidents.md             four failures that produced the rules
 │   └── pitfalls.md              twelve ways this system rots (and the fix)
 ├── example-agent/               a demo agent home the scripts can act on
 │   ├── IDENTITY.md  USER.md  MEMORY.md  POINTERS.md
 │   └── skills/
 │       ├── example-skill/{SKILL.md, references/INDEX.md, references/*.md}
-│       └── another-skill/{SKILL.md, ...}
+│       ├── another-skill/{SKILL.md, ...}
+│       └── third-skill/{SKILL.md, references/INDEX.md, references/2026/03/*.md}
 └── scripts/
     ├── _config.py               shared path resolution (one home for the path rules)
     ├── _config.sh               the same, for the shell scripts
@@ -89,6 +123,9 @@ cd agent-context-maintenance
 ./scripts/selftest.sh          # runs every script against a throwaway copy of example-agent/
 ```
 
+CI runs the same three commands on every push, so what the Actions tab shows and what a local run prints
+mean the same thing. To add your own check, `docs/writing-a-check.md` is the walkthrough.
+
 To point the scripts at your own agent home instead:
 
 ```bash
@@ -111,65 +148,33 @@ python3 scripts/pointers-check.py
 ./scripts/snapshot-context.sh
 ```
 
-Every backup lands in `AGENT_BACKUP_DIR` (printed by the backup script), never beside the file it
-protects: a pile of `.bak` files in the context directory is how a scanner starts counting backups as
-content.
+Backups land in `AGENT_BACKUP_DIR` (the script prints the path), never beside the file they protect:
+`.bak` files sitting in the context directory get counted as content by every scan.
 
-The point is not ceremony. It is that the agent performing the edit cannot be the only witness to it:
+Only `compare` needs reading:
 
-- `post-change-compare.py` exits **1** when a line from the backup no longer appears in the new file
-  *and* any of these is also true: a structured token (path, identifier, number) is gone from the whole
-  file, a run of CJK text is gone, or none of the line's three-word phrases survives. It is a heuristic,
-  deliberately biased toward false alarms: a false alarm costs one glance, a silent loss costs content.
-  Plain Latin words are not distinctive on their own, so rewording a longer sentence still passes.
-  Phrases are matched **per line**, on both sides, so a phrase cannot be invented by joining one line to
-  the next; a line of one or two words is too short to carry a phrase and is reported only when not one
-  of its words survives anywhere. Lines under 8 characters are not judged at all (the run says how many
-  it skipped), and the report caps at 40 findings (it says how many it omitted).
-- `pointers-check.py` exits **1** on its own dimensions and reports `file:line`; `index-audit.py` exits
-  **1** on its own dimensions and reports paths. Either way, "the checks are green" is a machine claim,
-  not a feeling.
-- `--pool DIR_OR_FILE` tells the comparison that content was *moved*, not lost (into a skill, another
-  file).
+- It prints the lines that disappeared, and why it thinks so:
 
-Full rules, including the ones that are counter-intuitive, are in `docs/maintenance-workflow.md`.
+  ```
+    L50: - A vector index for cross-session recall. Rejected for this deploym
+           tokens gone: cross-session, deployment:, recall. | no phrase survives (14 checked)
+  [!] 1 line(s) look lost — read them before trusting the edit
+  ```
 
-## Design rules distilled
+- Exit 1 means "read these", not "the edit failed". The judgement is deliberately biased toward false
+  alarms: one costs a glance, a silent loss costs the content.
+- If the content moved rather than went away, name the destination with `--pool DIR_OR_FILE` and the same
+  line comes back green.
 
-1. **The backup is the first physical action, not the first idea.** "I remembered to back up" is not a backup.
-2. **Injection is a budget.** Everything in `IDENTITY.md`, `USER.md`, `MEMORY.md` is paid for on every
-   turn. Detail belongs in a skill, referenced by a pointer.
-3. **A pointer that cannot be checked will rot.** Register pointers in one place; make them resolvable.
-4. **Nothing important lives only in `MEMORY.md`.** Memory gets compacted; procedures belong in skills.
-5. **One rule, one home.** The same judgement written in two scripts drifts; the second copy imports the first.
-6. **Scripts only add, never overwrite.** Same-second reruns must not eat the previous backup.
-7. **Number your findings and freeze the IDs.** `[C]` means the same check forever; renumbering is a
-   measured cost, not tidying. Owned dimensions set the exit code, informational ones never do.
-8. **Pointers get three outcomes, not two** — resolves / recoverable (archived) / broken. Collapsing
-   "filed away" into "lost" throws away the part that makes a report actionable.
-9. **A checker needs its own exit code** — but only for the dimensions it owns, or the code becomes noise.
-10. **Self-test in both directions — then break the rule on purpose.** "Reworded text passes" and
-    "deleted text is flagged" are two different tests; an assertion that also passes with the old
-    judgement put back is a regression guard, not coverage of the rule.
-
-## Scope
-
-- All *data* is example data. The agent ("Alice"), the user ("Sam"), the host name, the paths, the skills
-  and every fact in `example-agent/` are invented for demonstration; no real file, host or person
-  appears anywhere in this repository.
-- The lessons in `docs/` are not invented: they come from one long-lived practice, with the identifying
-  details (names, hosts, paths, credentials) removed. The numbers quoted there are measurements from that
-  practice, not demo figures.
-- The scripts are self-contained rewrites of a workflow that evolved elsewhere; they carry no
-  deployment-specific configuration and read every path from `config.env` (copied from
-  `config.example.env`) or from the environment.
-- Tested on Linux (bash 5, Python 3.8+) only.
+`check` runs two scripts that each own their exit code and print `file:line`. `snapshot` leaves a
+timestamped copy of the four files behind. The full ruleset, including the counter-intuitive parts, is in
+`docs/maintenance-workflow.md`.
 
 ## Provenance
 
-This is not a port of an existing framework, and it names none: the four layers, the edit loop and the
-check numbering were derived from a maintenance workflow that evolved in practice around a single
-long-lived agent, and then stripped of every deployment-specific part.
+This is not a port of an existing framework. The four layers, the edit loop and the check numbering were
+derived from a maintenance workflow that evolved in practice around a single long-lived agent, and then
+stripped of every deployment-specific part.
 
 What it borrows are ordinary practices, used in their normal sense: write-ahead backup before editing,
 golden and snapshot testing, linters that own their own exit code, a two-phase `plan` then `apply` for

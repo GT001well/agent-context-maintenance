@@ -9,8 +9,10 @@ Owned dimensions (an entry in any of them sets exit code 1):
   [A] frontmatter `name` missing, or not equal to the directory name — the loader then either cannot
       find the skill by name or reports two skills that look like one.
   [B] three or more files in `references/` but no `references/INDEX.md` table.
-  [C] an entry in `references/INDEX.md` whose file is not on disk (ghost entry).
-  [D] a file in `references/` that the index table never mentions (coverage gap).
+  [C] an entry in `references/INDEX.md` whose file is not on disk (ghost entry). Nested files are listed
+      by their real path, so a row naming a directory, or a nested file naming itself, lands here.
+  [D] a file in `references/` that the index table never mentions (coverage gap), matched by real path or
+      by file name.
   [E] the same skill directory name appearing twice under the tree (ambiguous lookup).
   [F] a SKILL.md with an odd number of ``` fences — the body renders and scans as truncated text.
   [G] a directory holding files but no SKILL.md at or below it — content that cannot be loaded as a
@@ -74,7 +76,13 @@ def orphan_content(root: Path) -> List[str]:
 
 
 def index_entries(index: Path) -> List[str]:
-    """File names mentioned in an index table (only the first column of table rows)."""
+    """Paths mentioned in an index table (only the first column of table rows).
+
+    The path is kept as written. Reducing it to its last component looked harmless and made the nested
+    convention in `docs/design.md` impossible to satisfy: the row was read as `decision-log.md`, the ghost
+    check then looked for `references/decision-log.md`, and reported the correctly written row as an entry
+    with no file.
+    """
     names: List[str] = []
     for line in index.read_text(encoding="utf-8", errors="replace").splitlines():
         if not line.strip().startswith("|") or set(line.strip()) <= set("|- "):
@@ -82,7 +90,7 @@ def index_entries(index: Path) -> List[str]:
         first = line.strip().strip("|").split("|")[0].strip()
         match = INDEX_ROW.search(first)
         if match:
-            names.append(Path(match.group(1)).name)
+            names.append(match.group(1))
     return names
 
 
@@ -126,8 +134,13 @@ def audit(root: Path) -> Dict[str, List[str]]:
             if not (refs_dir / name).is_file():
                 owned.append(f"[C] {index} — entry '{name}' is not on disk")
         for path in files:
-            if path.name not in listed:
-                owned.append(f"[D] {index} — {path.relative_to(refs_dir)} exists but is not listed")
+            # A nested file has to be listed by its real path (the documented convention), while a file
+            # directly in references/ has name == relative path, so listing its name is the same thing.
+            # Accepting a bare name here as well is deliberate: for a nested file it is caught by [C]
+            # anyway, because `references/<name>` does not exist.
+            relative = str(path.relative_to(refs_dir))
+            if relative not in listed and path.name not in listed:
+                owned.append(f"[D] {index} — {relative} exists but is not listed")
         for path in files:
             size = len(path.read_text(encoding="utf-8", errors="replace").strip())
             if size < TINY_FILE:

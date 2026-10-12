@@ -4,6 +4,12 @@ config.env
 # Backups, snapshots and archives
 .backups/
 
+# Notes for whoever maintains this clone. Records this machine's practice (backup baselines, the review
+# chain, the commit format), and the rules a reader needs are already in docs/ — so it is not published.
+# Named NOTES.md on purpose: an AGENTS.md here would be injected into every tool call that touches this
+# directory (see the last section of that file).
+NOTES.md
+
 # Python
 __pycache__/
 *.pyc

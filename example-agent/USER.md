@@ -7,7 +7,7 @@
 Sam — the only human this agent works with. Backend-ish generalist: comfortable in a shell, prefers
 reading a diff to reading a summary. Works on `example-host` (Linux, bash, Python).
 
-## Preferences (facts, not orders)
+## Preferences, written as facts
 
 - Sam reads terminal output directly; plain text with indentation is preferred over rendered markdown.
 - Emoji are not used in technical output — this was corrected twice, treat it as settled.

@@ -200,3 +200,6 @@ have, and wiring it in would make the green here mean less:
    confirm the case that covers it goes red. An assertion that passes in both worlds is a regression
    guard, not evidence that the rule works — keep it, but do not count it as coverage.
 6. Freeze the IDs. Append new ones; renumber only if you have measured what renumbering costs.
+
+`docs/writing-a-check.md` is the walkthrough for the same rules: which files a new dimension touches, in
+what order, with the commands to run at the end.

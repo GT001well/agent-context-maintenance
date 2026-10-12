@@ -4,7 +4,7 @@ Two real edits against `example-agent/`, with the comparator's actual output. `s
 exercises the same cases against a throwaway copy and asserts the exit codes; the numbers below were
 captured by running the commands by hand.
 
-## Example 1 — rewording a sentence (must pass)
+## Example 1: rewording a sentence must pass
 
 ```bash
 export AGENT_HOME=.../example-agent AGENT_BACKUP_DIR=.../backups
@@ -27,7 +27,7 @@ distinctive. The run also says how many lines it never judged (`11` here — hea
 rows): a skipped line is not a line that passed, and reporting the count is the difference between a
 clean report and a report that quietly looked at less than it claims.
 
-## Example 2 — deleting a bullet (must be caught)
+## Example 2: deleting a bullet must be caught
 
 ```bash
 scripts/pre-change-backup.sh "$AGENT_HOME/POINTERS.md"
@@ -48,7 +48,7 @@ Exit code `1`, with the line number, the structured tokens that vanished, and th
 line's 14 three-word phrases survives anywhere. Three independent signals agree — which is what makes
 this a finding rather than a guess.
 
-## Example 2b — the same deletion, but the content *moved* (must pass)
+## Example 2b: the same deletion with the content *moved*, must pass
 
 If the bullet was promoted into a skill instead of deleted, say so with `--pool`:
 
@@ -73,7 +73,7 @@ makes the run *stricter*, not looser: the edit looks like a loss until the path 
 command above names `"$AGENT_SKILLS_ROOT"` rather than a bare `skills/`, which resolves to nothing when
 the script is run from the repository root.
 
-## Example 3 — a pointer whose target was archived (recoverable, not lost)
+## Example 3: a pointer whose target was archived stays recoverable
 
 Move `skills/another-skill/` into `skills/.archive/` (the default archive directory) and run the
 pointer check:
